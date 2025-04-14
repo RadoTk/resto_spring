@@ -71,6 +71,7 @@ public class Ingredient {
         return quantity;
     }
 
+    
     private Optional<Price> findPriceAt(LocalDate dateValue) {
         return prices.stream()
                 .filter(price -> price.getDateValue().equals(dateValue))
