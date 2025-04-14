@@ -30,40 +30,54 @@ public class StockMovementCrudOperations implements CrudOperations<StockMovement
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
-    public List<StockMovement> saveAll(List<StockMovement> entities) {
-        List<StockMovement> stockMovements = new ArrayList<>();
-        String sql = """
-                insert into stock_movement (id, quantity, unit, movement_type, creation_datetime, id_ingredient)
-                values (?, ?, ?, ?, ?, ?)
-                on conflict (id) do nothing returning id, quantity, unit, movement_type, creation_datetime, id_ingredient""";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
-            entities.forEach(entityToSave -> {
-                try {
-                    statement.setLong(1, entityToSave.getId());
-                    statement.setDouble(2, entityToSave.getQuantity());
-                    statement.setString(3, entityToSave.getUnit().name());
-                    statement.setString(4, entityToSave.getMovementType().name());
-                    statement.setTimestamp(5, Timestamp.from(now()));
-                    statement.setLong(6, entityToSave.getIngredient().getId());
-                    statement.addBatch(); // group by batch so executed as one query in database
-                } catch (SQLException e) {
-                    throw new ServerException(e);
-                }
-            });
-            try (ResultSet resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    stockMovements.add(stockMovementMapper.apply(resultSet));
-                }
-            }
-            return stockMovements;
-        } catch (SQLException e) {
-            throw new ServerException(e);
-        }
-    }
 
+    @Override
+public List<StockMovement> saveAll(List<StockMovement> entities) {
+    List<StockMovement> stockMovements = new ArrayList<>();
+    String sql = """
+            insert into stock_movement (quantity, unit, movement_type, creation_datetime, id_ingredient)
+            values (?, ?, ?, ?, ?)
+            returning id, quantity, unit, movement_type, creation_datetime, id_ingredient""";
+
+    try (Connection connection = dataSource.getConnection();
+         PreparedStatement statement = connection.prepareStatement(sql)) {
+        
+        for (StockMovement entityToSave : entities) {
+            try {
+                // Vérifiez que les champs obligatoires sont présents
+                if (entityToSave.getQuantity() == null || entityToSave.getUnit() == null || 
+                    entityToSave.getMovementType() == null || entityToSave.getIngredient() == null) {
+                    throw new ServerException("Missing required stock movement fields");
+                }
+
+                statement.setDouble(1, entityToSave.getQuantity());
+                statement.setObject(2, entityToSave.getUnit().name(), java.sql.Types.OTHER);
+                statement.setObject(3, entityToSave.getMovementType().name(), java.sql.Types.OTHER);
+                statement.setTimestamp(4, Timestamp.from(entityToSave.getCreationDatetime()));
+                statement.setLong(5, entityToSave.getIngredient().getId());
+                statement.addBatch(); // Ajoutez le mouvement au batch
+            } catch (SQLException e) {
+                // Log l'erreur et continuez avec le prochain mouvement
+                System.err.println("Erreur lors de l'insertion du mouvement : " + e.getMessage());
+            }
+        }
+
+        // Exécutez le batch et récupérez les résultats
+        int[] results = statement.executeBatch(); // Exécutez le batch
+        for (int result : results) {
+            if (result >= 0) {
+                // Si l'insertion a réussi, vous pouvez récupérer les résultats ici
+                // (si vous avez besoin de faire quelque chose avec les IDs retournés)
+            }
+        }
+
+        return stockMovements; // Retournez les mouvements enregistrés
+    } catch (SQLException e) {
+        throw new ServerException(e);
+    }
+}
+
+    
     public List<StockMovement> findByIdIngredient(Long idIngredient) {
         List<StockMovement> stockMovements = new ArrayList<>();
         try (Connection connection = dataSource.getConnection();

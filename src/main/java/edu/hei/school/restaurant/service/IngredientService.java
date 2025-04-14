@@ -2,6 +2,7 @@ package edu.hei.school.restaurant.service;
 
 import edu.hei.school.restaurant.dao.operations.IngredientCrudOperations;
 import edu.hei.school.restaurant.dao.operations.PriceCrudOperations;
+import edu.hei.school.restaurant.dao.operations.StockMovementCrudOperations;
 import edu.hei.school.restaurant.model.Ingredient;
 import edu.hei.school.restaurant.model.Price;
 import edu.hei.school.restaurant.model.StockMovement;
@@ -20,6 +21,7 @@ import java.util.List;
 public class IngredientService {
     private final IngredientCrudOperations ingredientCrudOperations;
     private final PriceCrudOperations priceCrudOperations;
+    private final StockMovementCrudOperations stockMovementCrudOperations;
     
 
     public List<Ingredient> getIngredientsByPrices(Double priceMinFilter, Double priceMaxFilter) {
@@ -86,18 +88,25 @@ public class IngredientService {
 
 
 
-    public Ingredient addStockMovements(Long ingredientId, List<StockMovement> stockMovements) {
-        Ingredient ingredient = getById(ingredientId);
-        if (ingredient == null) {
-            throw new NotFoundException("Ingredient with id " + ingredientId + " not found");
-        }
-
-        // Add the movements to the ingredient using the entity method
-        ingredient.addStockMovements(stockMovements);
-
-        // Save the updated ingredient
-        return ingredientCrudOperations.saveAll(List.of(ingredient)).get(0);
+    public Ingredient addStockMovements(Long ingredientId, List<StockMovement> stockMovementsToAdd) {
+        // Récupérer l'ingrédient par son ID
+        Ingredient ingredient = ingredientCrudOperations.findById(ingredientId);
+        
+        // Charger les mouvements de stock existants depuis la base de données
+        List<StockMovement> existingMovements = stockMovementCrudOperations.findByIdIngredient(ingredientId);
+        ingredient.setStockMovements(existingMovements);
+        
+        // Ajouter les nouveaux mouvements de stock
+        ingredient.addStockMovements(stockMovementsToAdd);
+        
+        // Sauvegarder les nouveaux mouvements de stock
+        stockMovementCrudOperations.saveAll(stockMovementsToAdd);
+        
+        // Sauvegarder l'ingrédient mis à jour
+        return ingredientCrudOperations.save(ingredient);
     }
+    
+
 
     public Ingredient update(Ingredient ingredient) {
         // Vérifie que l'ingrédient existe (utilise votre findById existant)

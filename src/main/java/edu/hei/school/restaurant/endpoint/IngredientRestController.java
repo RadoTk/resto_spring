@@ -3,9 +3,13 @@ package edu.hei.school.restaurant.endpoint;
 import edu.hei.school.restaurant.endpoint.mapper.IngredientRestMapper;
 import edu.hei.school.restaurant.endpoint.rest.CreateIngredientPrice;
 import edu.hei.school.restaurant.endpoint.rest.CreateOrUpdateIngredient;
+import edu.hei.school.restaurant.endpoint.rest.CreateStockMovement;
 import edu.hei.school.restaurant.endpoint.rest.IngredientRest;
 import edu.hei.school.restaurant.model.Ingredient;
 import edu.hei.school.restaurant.model.Price;
+import edu.hei.school.restaurant.model.StockMovement;
+import edu.hei.school.restaurant.model.StockMovementType;
+import edu.hei.school.restaurant.model.Unit;
 import edu.hei.school.restaurant.service.IngredientService;
 import edu.hei.school.restaurant.service.exception.ClientException;
 import edu.hei.school.restaurant.service.exception.NotFoundException;
@@ -14,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -136,6 +141,33 @@ public ResponseEntity<Object> updateIngredientPrices(
     return ResponseEntity.ok().body(ingredientRest);
 }
 
+
+@PutMapping("/ingredients/{ingredientId}/stockMovements")
+public ResponseEntity<Object> updateIngredientStockMovements(
+    @PathVariable Long ingredientId, 
+    @RequestBody List<CreateStockMovement> stockMovements) {
+    
+    // Récupérer l'ingrédient par son ID
+    Ingredient ingredient = ingredientService.getById(ingredientId);
+    
+    // Créer la liste des mouvements de stock en associant l'ingrédient
+    List<StockMovement> movements = stockMovements.stream()
+            .map(stockMovement -> {
+                StockMovement movement = new StockMovement();
+                movement.setQuantity(stockMovement.getQuantity());
+                movement.setUnit(stockMovement.getUnit());
+                movement.setMovementType(stockMovement.getMovementType());
+                movement.setCreationDatetime(Instant.now()); // ou utiliser stockMovement.getCreationDateTime() si nécessaire
+                movement.setIngredient(ingredient); // Associer l'ingrédient
+                return movement;
+            })
+            .toList();
+    
+    // Ajouter les mouvements de stock à l'ingrédient
+    Ingredient updatedIngredient = ingredientService.addStockMovements(ingredientId, movements);
+    IngredientRest ingredientRest = ingredientRestMapper.toRest(updatedIngredient);
+    return ResponseEntity.ok().body(ingredientRest);
+}
 
 
     @GetMapping("/ingredients/{id}")
