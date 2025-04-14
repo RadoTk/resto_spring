@@ -35,7 +35,7 @@ public class PriceCrudOperations implements CrudOperations<Price> {
         }
         
         try (Connection connection = dataSource.getConnection()) {
-            String sql = "INSERT INTO price (amount, date_value, ingredient_id) VALUES (?, ?, ?)";
+            String sql = "INSERT INTO price (amount, date_value, id_ingredient) VALUES (?, ?, ?)";
             try (PreparedStatement stmt = connection.prepareStatement(sql)) {
                 for (Price price : prices) {
                     // Vérification des paramètres obligatoires
@@ -54,6 +54,9 @@ public class PriceCrudOperations implements CrudOperations<Price> {
         }
         return prices;
     }
+
+
+
     public List<Price> findByIdIngredient(Long idIngredient) {
         List<Price> prices = new ArrayList<>();
         try (Connection connection = dataSource.getConnection();

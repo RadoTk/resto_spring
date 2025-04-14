@@ -113,16 +113,30 @@ public class IngredientRestController {
 
 
 
-    @PutMapping("/ingredients/{ingredientId}/prices")
-    public ResponseEntity<Object> updateIngredientPrices(@PathVariable Long ingredientId, @RequestBody List<CreateIngredientPrice> ingredientPrices) {
-        List<Price> prices = ingredientPrices.stream()
-                .map(ingredientPrice ->
-                        new Price(ingredientPrice.getAmount(), ingredientPrice.getDateValue()))
-                .toList();
-        Ingredient ingredient = ingredientService.addPrices(ingredientId, prices);
-        IngredientRest ingredientRest = ingredientRestMapper.toRest(ingredient);
-        return ResponseEntity.ok().body(ingredientRest);
-    }
+@PutMapping("/ingredients/{ingredientId}/prices")
+public ResponseEntity<Object> updateIngredientPrices(
+    @PathVariable Long ingredientId, 
+    @RequestBody List<CreateIngredientPrice> ingredientPrices) {
+    
+    // Récupérer l'ingrédient par son ID
+    Ingredient ingredient = ingredientService.getById(ingredientId);
+    
+    // Créer la liste des prix en associant l'ingrédient
+    List<Price> prices = ingredientPrices.stream()
+            .map(ingredientPrice -> {
+                Price price = new Price(ingredientPrice.getAmount(), ingredientPrice.getDateValue());
+                price.setIngredient(ingredient); // Associer l'ingrédient
+                return price;
+            })
+            .toList();
+    
+    // Ajouter les prix à l'ingrédient
+    Ingredient updatedIngredient = ingredientService.addPrices(ingredientId, prices);
+    IngredientRest ingredientRest = ingredientRestMapper.toRest(updatedIngredient);
+    return ResponseEntity.ok().body(ingredientRest);
+}
+
+
 
     @GetMapping("/ingredients/{id}")
     public ResponseEntity<Object> getIngredient(@PathVariable(name = "id") Long id) {

@@ -1,6 +1,7 @@
 package edu.hei.school.restaurant.service;
 
 import edu.hei.school.restaurant.dao.operations.IngredientCrudOperations;
+import edu.hei.school.restaurant.dao.operations.PriceCrudOperations;
 import edu.hei.school.restaurant.model.Ingredient;
 import edu.hei.school.restaurant.model.Price;
 import edu.hei.school.restaurant.model.StockMovement;
@@ -18,6 +19,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class IngredientService {
     private final IngredientCrudOperations ingredientCrudOperations;
+    private final PriceCrudOperations priceCrudOperations;
+    
 
     public List<Ingredient> getIngredientsByPrices(Double priceMinFilter, Double priceMaxFilter) {
         if (priceMinFilter != null && priceMinFilter < 0) {
@@ -51,6 +54,7 @@ public class IngredientService {
                 .toList();
     }
 
+    
     public List<Ingredient> getAll(Integer page, Integer size) {
         return ingredientCrudOperations.getAll(page, size);
     }
@@ -63,12 +67,24 @@ public class IngredientService {
         return ingredientCrudOperations.saveAll(ingredients);
     }
 
+
     public Ingredient addPrices(Long ingredientId, List<Price> pricesToAdd) {
         Ingredient ingredient = ingredientCrudOperations.findById(ingredientId);
+        
+        // Charge les prix existants depuis la base de données
+        List<Price> existingPrices = priceCrudOperations.findByIdIngredient(ingredientId);
+        ingredient.setPrices(existingPrices);
+        
+        // Ajoute les nouveaux prix
         ingredient.addPrices(pricesToAdd);
-        List<Ingredient> ingredientsSaved = ingredientCrudOperations.saveAll(List.of(ingredient));
-        return ingredientsSaved.getFirst();
+        
+        // Sauvegarde les nouveaux prix
+        priceCrudOperations.saveAll(pricesToAdd);
+        
+        return ingredientCrudOperations.save(ingredient);
     }
+
+
 
     public Ingredient addStockMovements(Long ingredientId, List<StockMovement> stockMovements) {
         Ingredient ingredient = getById(ingredientId);
