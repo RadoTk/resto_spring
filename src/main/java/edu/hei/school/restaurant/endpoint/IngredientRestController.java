@@ -42,6 +42,7 @@ public class IngredientRestController {
         }
     }
 
+    // Ajout
     @PostMapping("/ingredients")
     public ResponseEntity<Object> addIngredients(@RequestBody List<CreateOrUpdateIngredient> ingredientsToCreate) {
     try {
@@ -65,6 +66,7 @@ public class IngredientRestController {
         return ResponseEntity.internalServerError().body(e.getMessage());
     }
 }
+
 
     @PutMapping("/ingredients")
     public ResponseEntity<Object> updateIngredients(@RequestBody List<CreateOrUpdateIngredient> ingredientsToCreateOrUpdate) {
@@ -135,5 +137,8 @@ public class IngredientRestController {
         }
     }
 
+ 
+
+    
 }
 
