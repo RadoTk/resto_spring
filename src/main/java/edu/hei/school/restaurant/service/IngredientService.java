@@ -3,7 +3,10 @@ package edu.hei.school.restaurant.service;
 import edu.hei.school.restaurant.dao.operations.IngredientCrudOperations;
 import edu.hei.school.restaurant.model.Ingredient;
 import edu.hei.school.restaurant.model.Price;
+import edu.hei.school.restaurant.model.StockMovement;
 import edu.hei.school.restaurant.service.exception.ClientException;
+import edu.hei.school.restaurant.service.exception.NotFoundException;
+import edu.hei.school.restaurant.service.exception.ServerException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -65,5 +68,29 @@ public class IngredientService {
         ingredient.addPrices(pricesToAdd);
         List<Ingredient> ingredientsSaved = ingredientCrudOperations.saveAll(List.of(ingredient));
         return ingredientsSaved.getFirst();
+    }
+
+    public Ingredient addStockMovements(Long ingredientId, List<StockMovement> stockMovements) {
+        Ingredient ingredient = getById(ingredientId);
+        if (ingredient == null) {
+            throw new NotFoundException("Ingredient with id " + ingredientId + " not found");
+        }
+
+        // Add the movements to the ingredient using the entity method
+        ingredient.addStockMovements(stockMovements);
+
+        // Save the updated ingredient
+        return ingredientCrudOperations.saveAll(List.of(ingredient)).get(0);
+    }
+
+    public Ingredient update(Ingredient ingredient) {
+        // Vérifie que l'ingrédient existe (utilise votre findById existant)
+        Ingredient existing = ingredientCrudOperations.findById(ingredient.getId());
+        
+        // Met à jour les champs modifiables
+        existing.setName(ingredient.getName());
+        
+        // Sauvegarde la mise à jour
+        return ingredientCrudOperations.save(existing);
     }
 }

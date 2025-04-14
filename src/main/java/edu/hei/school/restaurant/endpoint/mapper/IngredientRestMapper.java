@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Component
@@ -20,26 +21,51 @@ public class IngredientRestMapper {
     @Autowired private IngredientCrudOperations ingredientCrudOperations;
 
     public IngredientRest toRest(Ingredient ingredient) {
-        List<PriceRest> prices = ingredient.getPrices().stream()
-                .map(price -> priceRestMapper.apply(price)).toList();
-        List<StockMovementRest> stockMovementRests = ingredient.getStockMovements().stream()
-                .map(stockMovement -> stockMovementRestMapper.apply(stockMovement))
-                .toList();
-        return new IngredientRest(ingredient.getId(), ingredient.getName(), prices, stockMovementRests);
-    }
+    // Conversion des prix
+    List<PriceRest> priceRests = ingredient.getPrices() != null ?
+        ingredient.getPrices().stream()
+            .map(price -> priceRestMapper.apply(price))  // Utilisez votre mapper existant
+            .toList() :
+        Collections.emptyList();
+
+    // Conversion des mouvements de stock
+    List<StockMovementRest> stockMovementRests = ingredient.getStockMovements() != null ?
+        ingredient.getStockMovements().stream()
+            .map(stock -> stockMovementRestMapper.apply(stock))  // Utilisez votre mapper existant
+            .toList() :
+        Collections.emptyList();
+
+    return new IngredientRest(
+        ingredient.getId(),
+        ingredient.getName(),
+        priceRests,
+        stockMovementRests
+    );
+}
 
     public Ingredient toModel(CreateOrUpdateIngredient newIngredient) {
         Ingredient ingredient = new Ingredient();
-        ingredient.setId(newIngredient.getId());
         ingredient.setName(newIngredient.getName());
-        try {
-            Ingredient existingIngredient = ingredientCrudOperations.findById(newIngredient.getId());
-            ingredient.addPrices(existingIngredient.getPrices());
-            ingredient.addStockMovements(existingIngredient.getStockMovements());
-        } catch (NotFoundException e) {
-            ingredient.addPrices(new ArrayList<>());
-            ingredient.addStockMovements(new ArrayList<>());
+        
+        // Initialiser les listes à vides
+        ingredient.setPrices(new ArrayList<>());
+        ingredient.setStockMovements(new ArrayList<>());
+        
+        // Si c'est une mise à jour (id non null), on récupère les données existantes
+        if (newIngredient.getId() != null) {
+            try {
+                Ingredient existingIngredient = ingredientCrudOperations.findById(newIngredient.getId());
+                if (existingIngredient != null) {
+                    ingredient.setId(newIngredient.getId());
+                    ingredient.addPrices(existingIngredient.getPrices());
+                    ingredient.addStockMovements(existingIngredient.getStockMovements());
+                }
+            } catch (NotFoundException e) {
+                // Les listes sont déjà initialisées à vides
+            }
         }
+        
         return ingredient;
     }
+    
 }

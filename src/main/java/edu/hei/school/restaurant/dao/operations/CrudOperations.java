@@ -9,4 +9,5 @@ public interface CrudOperations<E> {
 
     // Both create (if does not exist) or update (if exist) entities
     List<E> saveAll(List<E> entities);
+
 }

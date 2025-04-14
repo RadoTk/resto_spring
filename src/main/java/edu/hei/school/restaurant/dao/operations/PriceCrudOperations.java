@@ -29,35 +29,31 @@ public class PriceCrudOperations implements CrudOperations<Price> {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @SneakyThrows
-    @Override
-    public List<Price> saveAll(List<Price> entities) {
-        List<Price> prices = new ArrayList<>();
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement =
-                     connection.prepareStatement("insert into price (id, amount, date_value, id_ingredient) values (?, ?, ?, ?)"
-                             + " on conflict (id) do nothing"
-                             + " returning id, amount, date_value, id_ingredient");) {
-            entities.forEach(entityToSave -> {
-                try {
-                    statement.setLong(1, entityToSave.getId());
-                    statement.setDouble(2, entityToSave.getAmount());
-                    statement.setDate(3, Date.valueOf(entityToSave.getDateValue()));
-                    statement.setLong(4, entityToSave.getIngredient().getId());
-                    statement.addBatch(); // group by batch so executed as one query in database
-                } catch (SQLException e) {
-                    throw new ServerException(e);
-                }
-            });
-            try (ResultSet resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    prices.add(priceMapper.apply(resultSet));
-                }
-            }
-            return prices;
+    public List<Price> saveAll(List<Price> prices) {
+        if (prices == null || prices.isEmpty()) {
+            return List.of(); // Retourne une liste vide si pas de prix
         }
+        
+        try (Connection connection = dataSource.getConnection()) {
+            String sql = "INSERT INTO price (amount, date_value, ingredient_id) VALUES (?, ?, ?)";
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                for (Price price : prices) {
+                    // Vérification des paramètres obligatoires
+                    if (price.getAmount() == null || price.getDateValue() == null || price.getIngredient() == null) {
+                        throw new ServerException("Missing required price fields");
+                    }
+                    stmt.setDouble(1, price.getAmount());
+                    stmt.setDate(2, Date.valueOf(price.getDateValue()));
+                    stmt.setLong(3, price.getIngredient().getId());
+                    stmt.addBatch();
+                }
+                stmt.executeBatch();
+            }
+        } catch (SQLException e) {
+            throw new ServerException(e);
+        }
+        return prices;
     }
-
     public List<Price> findByIdIngredient(Long idIngredient) {
         List<Price> prices = new ArrayList<>();
         try (Connection connection = dataSource.getConnection();

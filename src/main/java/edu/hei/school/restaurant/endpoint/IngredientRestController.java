@@ -10,7 +10,6 @@ import edu.hei.school.restaurant.service.IngredientService;
 import edu.hei.school.restaurant.service.exception.ClientException;
 import edu.hei.school.restaurant.service.exception.NotFoundException;
 import edu.hei.school.restaurant.service.exception.ServerException;
-import jakarta.servlet.ServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,9 +43,28 @@ public class IngredientRestController {
     }
 
     @PostMapping("/ingredients")
-    public ResponseEntity<Object> addIngredients() {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public ResponseEntity<Object> addIngredients(@RequestBody List<CreateOrUpdateIngredient> ingredientsToCreate) {
+    try {
+        // Ajoutez une validation
+        ingredientsToCreate.forEach(ingredient -> {
+            if (ingredient.getName() == null || ingredient.getName().isBlank()) {
+                throw new ServerException("Ingredient name cannot be empty");
+            }
+        });
+
+        List<Ingredient> ingredients = ingredientsToCreate.stream()
+                .map(ingredientRestMapper::toModel)
+                .toList();
+                
+        List<IngredientRest> ingredientsRest = ingredientService.saveAll(ingredients).stream()
+                .map(ingredientRestMapper::toRest)
+                .toList();
+                
+        return ResponseEntity.ok().body(ingredientsRest);
+    } catch (ServerException e) {
+        return ResponseEntity.internalServerError().body(e.getMessage());
     }
+}
 
     @PutMapping("/ingredients")
     public ResponseEntity<Object> updateIngredients(@RequestBody List<CreateOrUpdateIngredient> ingredientsToCreateOrUpdate) {
@@ -63,6 +81,36 @@ public class IngredientRestController {
         }
     }
 
+    @PutMapping("/ingredients/{ingredientId}")
+    public ResponseEntity<Object> updateIngredient(
+        @PathVariable Long ingredientId,
+        @RequestBody CreateOrUpdateIngredient ingredientToUpdate) {
+    try {
+        // Validation
+        if (ingredientToUpdate.getName() == null || ingredientToUpdate.getName().isBlank()) {
+            return ResponseEntity.badRequest().body("Ingredient name cannot be empty");
+        }
+
+        // Conversion et assignation de l'ID
+        Ingredient ingredientModel = ingredientRestMapper.toModel(ingredientToUpdate);
+        ingredientModel.setId(ingredientId);
+
+        // Mise à jour
+        Ingredient updatedIngredient = ingredientService.update(ingredientModel);
+        
+        return ResponseEntity.ok(ingredientRestMapper.toRest(updatedIngredient));
+        
+    } catch (NotFoundException e) {
+        return ResponseEntity.status(NOT_FOUND).body(e.getMessage());
+    } catch (ClientException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (ServerException e) {
+        return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+}
+
+
+
     @PutMapping("/ingredients/{ingredientId}/prices")
     public ResponseEntity<Object> updateIngredientPrices(@PathVariable Long ingredientId, @RequestBody List<CreateIngredientPrice> ingredientPrices) {
         List<Price> prices = ingredientPrices.stream()
@@ -75,7 +123,7 @@ public class IngredientRestController {
     }
 
     @GetMapping("/ingredients/{id}")
-    public ResponseEntity<Object> getIngredient(@PathVariable Long id) {
+    public ResponseEntity<Object> getIngredient(@PathVariable(name = "id") Long id) {
         try {
             return ResponseEntity.ok().body(ingredientRestMapper.toRest(ingredientService.getById(id)));
         } catch (ClientException e) {
@@ -86,4 +134,6 @@ public class IngredientRestController {
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
+
 }
+

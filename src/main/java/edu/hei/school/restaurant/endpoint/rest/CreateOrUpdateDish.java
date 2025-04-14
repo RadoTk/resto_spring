@@ -7,9 +7,9 @@ import java.util.List;
 
 @AllArgsConstructor
 @Getter
-public class IngredientRest {
+public class CreateOrUpdateDish {
     private Long id;
     private String name;
-    private List<PriceRest> prices;
-    private List<StockMovementRest> stockMovements;
+    private Double price; 
+    private List<DishIngredientRest> ingredients; 
 }

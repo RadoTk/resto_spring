@@ -1,0 +1,650 @@
+openapi: 3.1.0
+info:
+  title: Restaurant Management API - 2025 [J]
+  description: >
+    API de gestion de restaurant incluant la gestion des ingrédients (avec historique des prix
+    et mouvements de stock), des plats (composition, coût, marge brute) et des commandes 
+    (création, modification, suppression, gestion de statut et mise à jour de la liste des plats).
+    Des endpoints de calcul pour le dashboard (meilleures ventes et temps de traitement) sont également inclus.
+  version: 1.0.0
+servers:
+  - url: 'https://localhost:8080'
+paths:
+  # ---------------------------
+  # Ingrédients
+  # ---------------------------
+  /ingredients:
+    get:
+      summary: Get list of ingredients
+      description: Récupère la liste de tous les ingrédients avec pagination et filtrage par prix.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - in: query
+          name: priceMinFilter
+          schema:
+            type: number
+          required: false
+          description: Filtre sur le prix minimum.
+        - in: query
+          name: priceMaxFilter
+          schema:
+            type: number
+          required: false
+          description: Filtre sur le prix maximum.
+      responses:
+        200:
+          description: Liste d'ingrédients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ingredient'
+    post:
+      summary: Create a new ingredient
+      description: Crée un nouvel ingrédient avec ses propriétés de base.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: 
+                $ref: '#/components/schemas/IngredientBasicProperty'
+      responses:
+        201:
+          description: Ingrédient créé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+  /ingredients/{id}:
+    get:
+      summary: Get an ingredient by ID
+      parameters:
+        - $ref: '#/components/parameters/IngredientIdentifier'
+      responses:
+        200:
+          description: Détail d'un ingrédient
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+    put:
+      summary: Update an existing ingredient
+      description: Met à jour les propriétés d'un ingrédient existant.
+      parameters:
+        - $ref: '#/components/parameters/IngredientIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ingredient'
+      responses:
+        200:
+          description: Ingrédient mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+    delete:
+      summary: Delete an ingredient
+      parameters:
+        - $ref: '#/components/parameters/IngredientIdentifier'
+      responses:
+        204:
+          description: Ingrédient supprimé avec succès
+
+  /ingredients/{id}/prices:
+    put:
+      summary: Add or update prices for a specific ingredient
+      description: Ajoute ou met à jour l'historique des prix pour un ingrédient.
+      parameters:
+        - $ref: '#/components/parameters/IngredientIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Price'
+      responses:
+        200:
+          description: Ingrédient mis à jour avec les nouveaux prix
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+
+  /ingredients/{id}/stockMovements:
+    put:
+      summary: Add or update stock movements for a specific ingredient
+      description: Ajoute ou met à jour l'historique des mouvements de stock (entrées/sorties) pour un ingrédient.
+      parameters:
+        - $ref: '#/components/parameters/IngredientIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/StockMovement'
+      responses:
+        200:
+          description: Ingrédient mis à jour avec les mouvements de stock
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ingredient'
+
+  # ---------------------------
+  # Plats (Dishes)
+  # ---------------------------
+  /dishes:
+    get:
+      summary: Get list of dishes
+      description: Récupère la liste de tous les plats avec pagination.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        200:
+          description: Liste des plats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dish'
+    post:
+      summary: Create a new dish
+      description: Crée un nouveau plat avec son nom, ses ingrédients (et quantités) et son prix de vente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Dish'
+      responses:
+        201:
+          description: Plat créé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+  /dishes/{id}:
+    get:
+      summary: Get a dish by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Détail du plat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+    put:
+      summary: Update an existing dish
+      description: Met à jour les informations d'un plat (nom, composition, prix, etc.).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Dish'
+      responses:
+        200:
+          description: Plat mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dish'
+    delete:
+      summary: Delete a dish
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        204:
+          description: Plat supprimé avec succès
+
+  /dishes/{id}/cost:
+    get:
+      summary: Calculate dish cost
+      description: Calcule le coût du plat en sommant le prix des ingrédients en fonction de leur quantité.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Coût du plat
+          content:
+            application/json:
+              schema:
+                type: number
+
+  /dishes/{id}/grossMargin:
+    get:
+      summary: Calculate gross margin of a dish
+      description: Calcule la marge brute du plat (prix de vente - coût des ingrédients).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Marge brute du plat
+          content:
+            application/json:
+              schema:
+                type: number
+
+  /dishes/{id}/processingTime:
+    get:
+      summary: Get processing time for a dish
+      description: Récupère le temps de traitement d'un plat (du passage en IN_PREPARATION à COMPLETED) sur une plage de dates, avec option de moyenne, minimum ou maximum.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          required: true
+          description: Date de début
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          required: true
+          description: Date de fin
+        - in: query
+          name: unit
+          schema:
+            type: string
+            enum: [seconds, minutes, hours]
+          required: false
+          description: Unité de temps, par défaut seconds
+        - in: query
+          name: method
+          schema:
+            type: string
+            enum: [average, minimum, maximum]
+          required: false
+          description: Méthode de calcul, par défaut average
+      responses:
+        200:
+          description: Temps de traitement calculé
+          content:
+            application/json:
+              schema:
+                type: number
+    post:
+      summary: Persist processing time for a dish
+      description: Calcule et persiste le temps de traitement d'un plat pour une plage de dates donnée.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+      responses:
+        200:
+          description: Temps de traitement persisté avec succès
+          content:
+            application/json:
+              schema:
+                type: number
+
+  # ---------------------------
+  # Commandes (Orders)
+  # ---------------------------
+  /orders:
+    get:
+      summary: Get list of orders
+      description: Récupère la liste de toutes les commandes avec pagination.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        200:
+          description: Liste des commandes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+    post:
+      summary: Create a new order
+      description: Crée une nouvelle commande en spécifiant la liste des plats commandés.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        201:
+          description: Commande créée avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+  /orders/{id}:
+    get:
+      summary: Get an order by ID
+      parameters:
+        - $ref: '#/components/parameters/OrderIdentifier'
+      responses:
+        200:
+          description: Détail de la commande
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+    put:
+      summary: Update an existing order
+      description: Met à jour la liste des plats et/ou autres propriétés de la commande (hors modification du statut).
+      parameters:
+        - $ref: '#/components/parameters/OrderIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        200:
+          description: Commande mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+    delete:
+      summary: Delete an order
+      parameters:
+        - $ref: '#/components/parameters/OrderIdentifier'
+      responses:
+        204:
+          description: Commande supprimée avec succès
+
+  /orders/{id}/status:
+    put:
+      summary: Update the status of an order
+      description: Met à jour le statut d'une commande selon le cycle de vie.
+      parameters:
+        - $ref: '#/components/parameters/OrderIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderStatus'
+      responses:
+        200:
+          description: Statut de la commande mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+  /orders/{id}/dishes:
+    put:
+      summary: Update the list of dishes in an order
+      description: Modifie la liste des plats (et leurs quantités) associés à une commande.
+      parameters:
+        - $ref: '#/components/parameters/OrderIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Dish'
+      responses:
+        200:
+          description: Liste des plats de la commande mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  # ---------------------------
+  # Dashboard & Calculs (TD6 et Bonus)
+  # ---------------------------
+  /bestSales:
+    get:
+      summary: Get best sales
+      description: Récupère les X plats les plus vendus pour une plage de dates donnée.
+      parameters:
+        - in: query
+          name: topX
+          required: true
+          schema:
+            type: integer
+          description: Nombre de plats à récupérer.
+        - in: query
+          name: startDate
+          required: true
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: endDate
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: Liste des meilleurs plats vendus
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dish'
+    post:
+      summary: Calculate and persist best sales data
+      description: Calcule et enregistre les données des meilleures ventes pour une plage de dates donnée.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                topX:
+                  type: integer
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+      responses:
+        200:
+          description: Données des meilleures ventes calculées et persistées
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lastUpdated:
+                    type: string
+                    format: date-time
+                  bestSales:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dish'
+
+components:
+  parameters:
+    IngredientIdentifier:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+    OrderIdentifier:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+    Page:
+      in: query
+      name: page
+      required: false
+      schema:
+        type: integer
+    PageSize:
+      in: query
+      name: pageSize
+      required: false
+      schema:
+        type: integer
+
+  schemas:
+    Unit:
+      type: string
+      enum: [G, U, L]
+    StockMovementType:
+      type: string
+      enum: [IN, OUT]
+    OrderStatus:
+      type: string
+      enum:
+        - CREATED
+        - CONFIRMED
+        - IN_PREPARATION
+        - COMPLETED
+        - SERVED
+    IngredientBasicProperty:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    Price:
+      type: object
+      properties:
+        id:
+          type: integer
+        price:
+          type: number
+        dateValue:
+          type: string
+          format: date
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+        quantity:
+          type: number
+        unit:
+          $ref: '#/components/schemas/Unit'
+        type:
+          $ref: '#/components/schemas/StockMovementType'
+        creationDatetime:
+          type: string
+          format: date-time
+    Ingredient:
+      allOf:
+        - $ref: '#/components/schemas/IngredientBasicProperty'
+      type: object
+      properties:
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Price'
+        stockMovements:
+          type: array
+          items:
+            $ref: '#/components/schemas/StockMovement'
+        availableQuantity:
+          type: number
+        actualPrice:
+          type: number
+    DishIngredient:
+      type: object
+      properties:
+        requiredQuantity:
+          type: number
+        unit:
+          $ref: '#/components/schemas/Unit'
+        ingredient:
+          $ref: '#/components/schemas/IngredientBasicProperty'
+    Dish:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        availableQuantity:
+          type: number
+        actualPrice:
+          type: number
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/DishIngredient'
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        creationDate:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        dishes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dish'
