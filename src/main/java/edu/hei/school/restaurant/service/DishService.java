@@ -3,10 +3,8 @@ package edu.hei.school.restaurant.service;
 import edu.hei.school.restaurant.dao.operations.DishCrudOperations;
 import edu.hei.school.restaurant.model.Dish;
 import edu.hei.school.restaurant.model.DishIngredient;
-import edu.hei.school.restaurant.model.Ingredient;
 import edu.hei.school.restaurant.service.exception.ClientException;
 import edu.hei.school.restaurant.service.exception.NotFoundException;
-import edu.hei.school.restaurant.service.exception.ServerException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
