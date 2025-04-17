@@ -241,6 +241,28 @@ public class OrderCrudOperations implements CrudOperations<Order> {
     }
 
     private void updateDishOrders(Long orderId, List<DishOrder> dishOrders) {
+        // Supprimer les plats existants
+        dishOrderCrudOperations.deleteByOrderReference(orderId);
+        
+        // Ajouter les nouveaux plats
         dishOrderCrudOperations.saveAll(dishOrders);
+    }
+
+    public Order save(Order order) {
+        // Supprimer les plats existants (sans lever d'exception si vide)
+        dishOrderCrudOperations.deleteByOrderReference(order.getId());
+        
+        // Sauvegarder la commande elle-même
+        List<Order> savedOrders = saveAll(List.of(order));
+        Order savedOrder = savedOrders.get(0);
+        
+        // Sauvegarder les nouveaux plats
+        if (order.getDishOrders() != null && !order.getDishOrders().isEmpty()) {
+            List<DishOrder> dishOrders = order.getDishOrders();
+            List<DishOrder> savedDishOrders = dishOrderCrudOperations.saveAll(dishOrders);
+            savedOrder.setDishOrders(savedDishOrders);
+        }
+        
+        return savedOrder;
     }
 }

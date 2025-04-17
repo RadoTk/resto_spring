@@ -56,13 +56,12 @@ public class DishOrderCrudOperations implements CrudOperations<DishOrder> {
     public List<DishOrder> findByOrderId(Long orderId) {
         List<DishOrder> dishOrders = new ArrayList<>();
         String sql = """
-    SELECT od.id, od.order_id, od.dish_id, od.quantity,
-           d.name, d.price 
-    FROM \"order_dish\" od
-    JOIN \"dish\" d ON od.dish_id = d.id
-    WHERE od.order_id = ?
-    ORDER BY od.id ASC
-    """;
+        SELECT od.id, od.order_id, od.dish_id, od.quantity,
+               d.name AS name, d.price AS price
+        FROM order_dish od
+        JOIN dish d ON od.dish_id = d.id
+        WHERE od.order_id = ?
+        """;
 
         
         try (Connection connection = dataSource.getConnection();
@@ -86,12 +85,12 @@ public class DishOrderCrudOperations implements CrudOperations<DishOrder> {
     @Override
     public DishOrder findById(Long id) {
         String sql = """
-            SELECT od.id, od.order_id, od.dish_id, od.quantity,
-                   d.name, d.price
-            FROM \"order_dish\" od
-            JOIN \"dish\" d ON od.dish_id = d.id
-            WHERE od.id = ?
-            """;
+        SELECT od.id, od.order_id, od.dish_id, od.quantity,
+               d.name AS name, d.price AS price
+        FROM order_dish od
+        JOIN dish d ON od.dish_id = d.id
+        WHERE od.id = ?
+        """;
         
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -112,71 +111,86 @@ public class DishOrderCrudOperations implements CrudOperations<DishOrder> {
     }
 
     @SneakyThrows
-    @Override
-    public List<DishOrder> saveAll(List<DishOrder> entities) {
-        List<DishOrder> savedDishOrders = new ArrayList<>();
-        
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                String insertSql = """
-    INSERT INTO \"order_dish\" (order_id, dish_id, quantity) 
-    VALUES (?, ?, ?) 
-    RETURNING id, order_id, dish_id, quantity
-    """;
-                
-    String updateSql = """
-        UPDATE \"order_dish\" 
-        SET order_id = ?, dish_id = ?, quantity = ? 
-        WHERE id = ? 
-        RETURNING id, order_id, dish_id, quantity
-        """;
-                for (DishOrder entity : entities) {
-                    DishOrder savedDishOrder;
-                    if (entity.getId() == null) {
-                        // INSERT
-                        try (PreparedStatement stmt = connection.prepareStatement(insertSql)) {
-                            stmt.setLong(1, entity.getOrder().getId());
-                            stmt.setLong(2, entity.getDish().getId());
-                            stmt.setInt(3, entity.getQuantity());
-                            
-                            try (ResultSet rs = stmt.executeQuery()) {
-                                if (rs.next()) {
-                                    savedDishOrder = dishOrderMapper.apply(rs);
-                                    saveStatusHistory(savedDishOrder.getId(), entity.getStatusHistory());
-                                } else {
-                                    throw new ServerException("Failed to insert dish order");
-                                }
-                            }
-                        }
-                    } else {
-                        // UPDATE
-                        try (PreparedStatement stmt = connection.prepareStatement(updateSql)) {
-                            stmt.setLong(1, entity.getOrder().getId());
-                            stmt.setLong(2, entity.getDish().getId());
-                            stmt.setInt(3, entity.getQuantity());
-                            stmt.setLong(4, entity.getId());
-                            
-                            try (ResultSet rs = stmt.executeQuery()) {
-                                if (rs.next()) {
-                                    savedDishOrder = dishOrderMapper.apply(rs);
-                                    updateStatusHistory(savedDishOrder.getId(), entity.getStatusHistory());
-                                } else {
-                                    throw new ServerException("Dish order not found for update");
-                                }
+@Override
+public List<DishOrder> saveAll(List<DishOrder> entities) {
+    List<DishOrder> savedDishOrders = new ArrayList<>();
+    
+    try (Connection connection = dataSource.getConnection()) {
+        connection.setAutoCommit(false);
+        try {
+            // Requête INSERT modifiée pour joindre `dish` et retourner name/price
+            String insertSql = """
+                WITH inserted AS (
+                    INSERT INTO "order_dish" (order_id, dish_id, quantity) 
+                    VALUES (?, ?, ?) 
+                    RETURNING id, order_id, dish_id, quantity
+                )
+                SELECT i.id, i.order_id, i.dish_id, i.quantity, 
+                       d.name, d.price  -- Ajout des colonnes manquantes
+                FROM inserted i
+                JOIN dish d ON i.dish_id = d.id
+                """;
+            
+            // Requête UPDATE modifiée pour joindre `dish` et retourner name/price
+            String updateSql = """
+                WITH updated AS (
+                    UPDATE "order_dish" 
+                    SET order_id = ?, dish_id = ?, quantity = ? 
+                    WHERE id = ? 
+                    RETURNING id, order_id, dish_id, quantity
+                )
+                SELECT u.id, u.order_id, u.dish_id, u.quantity, 
+                       d.name, d.price  -- Ajout des colonnes manquantes
+                FROM updated u
+                JOIN dish d ON u.dish_id = d.id
+                """;
+
+            for (DishOrder entity : entities) {
+                DishOrder savedDishOrder;
+                if (entity.getId() == null) {
+                    // INSERT
+                    try (PreparedStatement stmt = connection.prepareStatement(insertSql)) {
+                        stmt.setLong(1, entity.getOrder().getId());
+                        stmt.setLong(2, entity.getDish().getId());
+                        stmt.setInt(3, entity.getQuantity());
+                        
+                        try (ResultSet rs = stmt.executeQuery()) {
+                            if (rs.next()) {
+                                savedDishOrder = dishOrderMapper.apply(rs);  // Maintenant, rs contient name/price
+                                saveStatusHistory(savedDishOrder.getId(), entity.getStatusHistory());
+                            } else {
+                                throw new ServerException("Failed to insert dish order");
                             }
                         }
                     }
-                    savedDishOrders.add(savedDishOrder);
+                } else {
+                    // UPDATE
+                    try (PreparedStatement stmt = connection.prepareStatement(updateSql)) {
+                        stmt.setLong(1, entity.getOrder().getId());
+                        stmt.setLong(2, entity.getDish().getId());
+                        stmt.setInt(3, entity.getQuantity());
+                        stmt.setLong(4, entity.getId());
+                        
+                        try (ResultSet rs = stmt.executeQuery()) {
+                            if (rs.next()) {
+                                savedDishOrder = dishOrderMapper.apply(rs);  // Maintenant, rs contient name/price
+                                updateStatusHistory(savedDishOrder.getId(), entity.getStatusHistory());
+                            } else {
+                                throw new ServerException("Dish order not found for update");
+                            }
+                        }
+                    }
                 }
-                connection.commit();
-            } catch (Exception e) {
-                connection.rollback();
-                throw e;
+                savedDishOrders.add(savedDishOrder);
             }
+            connection.commit();
+        } catch (Exception e) {
+            connection.rollback();
+            throw e;
         }
-        return savedDishOrders;
     }
+    return savedDishOrders;
+}
 
     public void updateStatus(Long dishOrderId, DishOrderStatus newStatus) {
         String sql = """
@@ -273,4 +287,43 @@ String insertSql = """
             throw new ServerException(e);
         }
     }
+
+    public void deleteByOrderReference(Long orderId) {
+        String deleteStatusSql = """
+            DELETE FROM "order_dish_status"
+            WHERE order_dish_id IN (
+                SELECT id FROM "order_dish" WHERE order_id = ?
+            )
+        """;
+    
+        String deleteDishOrderSql = """
+            DELETE FROM "order_dish" WHERE order_id = ?
+        """;
+    
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (
+                PreparedStatement deleteStatusStmt = connection.prepareStatement(deleteStatusSql);
+                PreparedStatement deleteDishOrderStmt = connection.prepareStatement(deleteDishOrderSql)
+            ) {
+                // Supprimer les historiques de statuts
+                deleteStatusStmt.setLong(1, orderId);
+                deleteStatusStmt.executeUpdate();
+    
+                // Supprimer les dish orders
+                deleteDishOrderStmt.setLong(1, orderId);
+                deleteDishOrderStmt.executeUpdate();
+                // SUPPRIMEZ LA VÉRIFICATION D'AFFECTED ROWS ICI
+                // Ne pas lever d'exception si aucune ligne n'est affectée
+    
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new ServerException(e);
+            }
+        } catch (SQLException e) {
+            throw new ServerException(e);
+        }
+    }
+    
 }

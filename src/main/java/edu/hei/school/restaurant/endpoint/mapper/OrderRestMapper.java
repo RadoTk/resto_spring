@@ -29,7 +29,7 @@ public class OrderRestMapper {
                 .creationDateTime(order.getCreationDateTime())
                 .status(getCurrentOrderStatus(order))
                 .totalAmount(order.getTotalAmount())
-                .dishes(mapDishOrdersToRest(order.getDishOrders()))
+                .dishOrders(mapDishOrdersToRest(order.getDishOrders()))
                 .build();
     }
 

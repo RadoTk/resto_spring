@@ -6,17 +6,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
 @Data
-public class OrderRest {
-    private String reference;
-    private LocalDateTime creationDateTime;
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UpdateOrderDishesRequest {
+    private List<OrderDishRequest> dishes;
     private OrderStatus status;
-    private Double totalAmount;
-    private List<OrderDishRest> dishOrders;
-} 
+}
+
