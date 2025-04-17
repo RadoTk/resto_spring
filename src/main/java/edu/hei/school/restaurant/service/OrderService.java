@@ -9,6 +9,7 @@ import edu.hei.school.restaurant.service.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -19,9 +20,34 @@ public class OrderService {
 
     public Order getByReference(String reference) {
         Order order = orderCrudOperations.findByReference(reference);
-        if (order == null) {
-            throw new NotFoundException("Order not found with reference: " + reference);
+        
+        // Initialisation des statuts si absents
+        if (order.getStatusHistory() == null || order.getStatusHistory().isEmpty()) {
+            OrderStatusHistory initialStatus = OrderStatusHistory.builder()
+                .order(order)
+                .status(OrderStatus.CREE)
+                .statusDateTime(order.getCreationDateTime() != null ? 
+                    order.getCreationDateTime() : 
+                    LocalDateTime.now())
+                .build();
+            order.setStatusHistory(List.of(initialStatus));
         }
+        
+        if (order.getDishOrders() != null) {
+            order.getDishOrders().forEach(dishOrder -> {
+                if (dishOrder.getStatusHistory() == null || dishOrder.getStatusHistory().isEmpty()) {
+                    DishOrderStatusHistory initialStatus = DishOrderStatusHistory.builder()
+                        .dishOrder(dishOrder)
+                        .status(DishOrderStatus.CREE)
+                        .statusDateTime(order.getCreationDateTime() != null ? 
+                            order.getCreationDateTime() : 
+                            LocalDateTime.now())
+                        .build();
+                    dishOrder.setStatusHistory(List.of(initialStatus));
+                }
+            });
+        }
+        
         return order;
     }
 

@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 @Builder
 public class OrderDishRest {
-        private String dishName; // Changé de dishRest à des champs spécifiques
+        private String dishName; 
         private Double currentPrice;
         private Integer quantity;
         private DishOrderStatus status;
