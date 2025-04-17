@@ -32,10 +32,10 @@ public class OrderService {
                 .map(dishRequest -> toDishOrder(order, dishRequest))
                 .toList();
         
-        order.setDishes(dishOrders);
+        order.setDishOrders(dishOrders);
         if (request.getStatus() != null) {
             order.setStatus(request.getStatus());
-            if (OrderStatus.CONFIRMED.equals(request.getStatus())) {
+            if (OrderStatus.CONFIRME.equals(request.getStatus())) {
                 order.confirm();
             }
         }
@@ -47,7 +47,7 @@ public class OrderService {
     public Order updateDishStatus(String reference, Long dishId, DishOrderStatus newStatus) {
         Order order = getByReference(reference);
         
-        DishOrder dishOrder = order.getDishes().stream()
+        DishOrder dishOrder = order.getDishOrders().stream()
                 .filter(d -> d.getDish().getId().equals(dishId))
                 .findFirst()
                 .orElseThrow(() -> new NotFoundException("Dish not found in order: " + dishId));
@@ -68,7 +68,7 @@ public class OrderService {
                 .order(order)
                 .dish(dish)
                 .quantity(dishRequest.getQuantity())
-                .status(DishOrderStatus.CREATED)
+                .status(DishOrderStatus.CREE)
                 .build();
     }
 } 

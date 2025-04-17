@@ -83,8 +83,15 @@ public class Dish {
                 '}';
     }
 
-    public Integer getTotalPrice() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getTotalPrice'");
+    public Double getTotalPrice() {
+        if (this.price == null) {
+            throw new IllegalStateException("Price not set for dish with ID: " + this.id);
+        }
+        return this.price;
+    }
+
+
+    public Dish(long long1) {
+        //TODO Auto-generated constructor stub
     }
 }

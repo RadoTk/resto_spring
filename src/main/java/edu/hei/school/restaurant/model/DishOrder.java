@@ -1,5 +1,8 @@
 package edu.hei.school.restaurant.model;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,24 +18,35 @@ public class DishOrder {
     private Dish dish;
     private Integer quantity;
     private DishOrderStatus status;
+    private List<DishOrderStatusHistory> statusHistory;
 
     public void updateStatus(DishOrderStatus newStatus) {
         if (canTransitionTo(newStatus)) {
+            DishOrderStatusHistory statusHistoryEntry = new DishOrderStatusHistory();
+            statusHistoryEntry.setStatus(newStatus);
+            statusHistoryEntry.setStatusDateTime(LocalDateTime.now());
+            this.statusHistory.add(statusHistoryEntry);
             this.status = newStatus;
         } else {
-            throw new IllegalStateException("Cannot transition from " + this.status + " to " + newStatus);
+            throw new IllegalStateException(
+                "Transition interdite de " + this.status + " vers " + newStatus);
         }
     }
 
     private boolean canTransitionTo(DishOrderStatus newStatus) {
-        if (this.status == null) return true;
+        if (this.status == null) return newStatus == DishOrderStatus.CREE;
         
         return switch (this.status) {
-            case CREATED -> newStatus == DishOrderStatus.CONFIRMED;
-            case CONFIRMED -> newStatus == DishOrderStatus.IN_PROGRESS;
-            case IN_PROGRESS -> newStatus == DishOrderStatus.FINISHED;
-            case FINISHED -> newStatus == DishOrderStatus.DELIVERED;
-            case DELIVERED -> false;
+            case CREE -> newStatus == DishOrderStatus.CONFIRME;
+            case CONFIRME -> newStatus == DishOrderStatus.EN_PREPARATION;
+            case EN_PREPARATION -> newStatus == DishOrderStatus.TERMINE;
+            case TERMINE -> newStatus == DishOrderStatus.SERVI;
+            case SERVI -> false;
         };
     }
-} 
+
+    public DishOrderStatus getActualStatus() {
+        return statusHistory.isEmpty() ? null : 
+               statusHistory.get(statusHistory.size() - 1).getStatus();
+    }
+}

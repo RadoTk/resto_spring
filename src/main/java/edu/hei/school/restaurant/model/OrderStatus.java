@@ -1,6 +1,9 @@
 package edu.hei.school.restaurant.model;
 
 public enum OrderStatus {
-    CREATED,
-    CONFIRMED
+    CREE,
+    CONFIRME,
+    EN_PREPARATION,
+    TERMINE,
+    SERVI
 } 

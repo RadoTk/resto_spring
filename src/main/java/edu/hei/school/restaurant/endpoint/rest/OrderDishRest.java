@@ -1,9 +1,13 @@
 package edu.hei.school.restaurant.endpoint.rest;
 
+import edu.hei.school.restaurant.model.DishOrderStatus;
+import lombok.Builder;
+import lombok.Data;
+@Data
+@Builder
 public class OrderDishRest {
-
-    public static Object builder() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'builder'");
+        private String dishName; // Changé de dishRest à des champs spécifiques
+        private Double currentPrice;
+        private Integer quantity;
+        private DishOrderStatus status;
     }
-} 
