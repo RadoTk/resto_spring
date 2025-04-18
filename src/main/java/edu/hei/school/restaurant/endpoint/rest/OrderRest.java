@@ -14,9 +14,8 @@ import java.util.List;
 @Builder
 @Data
 public class OrderRest {
-    private String reference;
-    private LocalDateTime creationDateTime;
-    private OrderStatus status;
+    private Long id;
     private Double totalAmount;
-    private List<OrderDishRest> dishOrders;
+    private String actualStatus;
+    private List<OrderDishRest> dishes;
 } 

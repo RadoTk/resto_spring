@@ -11,7 +11,9 @@ import edu.hei.school.restaurant.endpoint.rest.UpdateOrderDishesRequest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateOrderRequest;
 import edu.hei.school.restaurant.model.DishOrder;
 import edu.hei.school.restaurant.model.Order;
+import edu.hei.school.restaurant.model.OrderStatus;
 import edu.hei.school.restaurant.service.OrderService;
+import edu.hei.school.restaurant.service.exception.ClientException;
 import edu.hei.school.restaurant.service.exception.NotFoundException;
 import edu.hei.school.restaurant.service.exception.ServerException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,9 @@ import org.springframework.web.bind.annotation.*;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -78,6 +83,18 @@ return ResponseEntity.ok(orderRestMapper.toRest(updatedOrder));
             return ResponseEntity.ok().body(orderRest);
         } catch (NotFoundException e) {
             return ResponseEntity.status(NOT_FOUND).body(e.getMessage());
+        } catch (ServerException e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/orders/{reference}")
+    public ResponseEntity<?> createEmptyOrder(@PathVariable String reference) {
+        try {
+            Order createdOrder = orderService.createEmptyOrder(reference);
+            return ResponseEntity.ok(orderRestMapper.toRest(createdOrder));
+        } catch (ClientException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (ServerException e) {
             return ResponseEntity.internalServerError().body(e.getMessage());
         }

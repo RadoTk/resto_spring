@@ -12,4 +12,6 @@ public class IngredientRest {
     private String name;
     private List<PriceRest> prices;
     private List<StockMovementRest> stockMovements;
+    private Double availableQuantity;  
+    private Double actualPrice;  
 }

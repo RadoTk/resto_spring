@@ -6,8 +6,8 @@ import lombok.Data;
 @Data
 @Builder
 public class OrderDishRest {
-        private String dishName; 
-        private Double currentPrice;
+        private Long id;
+        private String name; 
         private Integer quantity;
-        private DishOrderStatus status;
+        private String actualOrderStatus;
     }

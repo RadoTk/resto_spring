@@ -326,4 +326,39 @@ String insertSql = """
         }
     }
     
+
+    public DishOrder save(DishOrder dishOrder) {
+        String sql = """
+            WITH inserted AS (
+                INSERT INTO "order_dish" (order_id, dish_id, quantity) 
+                VALUES (?, ?, ?) 
+                RETURNING id, order_id, dish_id, quantity
+            )
+            SELECT i.id, i.order_id, i.dish_id, i.quantity,
+                   d.name, d.price
+            FROM inserted i
+            JOIN dish d ON i.dish_id = d.id
+            """;
+        
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            
+            statement.setLong(1, dishOrder.getOrder().getId());
+            statement.setLong(2, dishOrder.getDish().getId());
+            statement.setInt(3, dishOrder.getQuantity());
+            
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    DishOrder saved = dishOrderMapper.apply(rs);
+                    if (dishOrder.getStatusHistory() != null) {
+                        saveStatusHistory(saved.getId(), dishOrder.getStatusHistory());
+                    }
+                    return saved;
+                }
+                throw new ServerException("Failed to save dish order");
+            }
+        } catch (SQLException e) {
+            throw new ServerException(e);
+        }
+    }
 }

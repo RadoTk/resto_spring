@@ -25,11 +25,10 @@ public class OrderRestMapper {
 
     public OrderRest toRest(Order order) {
         return OrderRest.builder()
-                .reference(order.getReference())
-                .creationDateTime(order.getCreationDateTime())
-                .status(getCurrentOrderStatus(order))
+                .id(order.getId())
                 .totalAmount(order.getTotalAmount())
-                .dishOrders(mapDishOrdersToRest(order.getDishOrders()))
+                .actualStatus(getCurrentOrderStatus(order).name()) // .name() convertit l'enum en String
+                .dishes(mapDishOrdersToRest(order.getDishOrders()))
                 .build();
     }
 
@@ -39,6 +38,7 @@ public class OrderRestMapper {
         }
         return DEFAULT_ORDER_STATUS;
     }
+
 
     private List<OrderDishRest> mapDishOrdersToRest(List<DishOrder> dishOrders) {
         if (dishOrders == null) {
@@ -52,13 +52,14 @@ public class OrderRestMapper {
 
     private OrderDishRest mapToOrderDishRest(DishOrder dishOrder) {
         return OrderDishRest.builder()
-                .dishName(dishOrder.getDish().getName())
-                .currentPrice(dishOrder.getDish().getPrice())
+                .id(dishOrder.getId())
+                .name(dishOrder.getDish().getName())
                 .quantity(dishOrder.getQuantity())
-                .status(getCurrentDishStatus(dishOrder))
+                .actualOrderStatus(getCurrentDishStatus(dishOrder).name()) // .name() convertit l'enum en String
                 .build();
     }
 
+    
     private DishOrderStatus getCurrentDishStatus(DishOrder dishOrder) {
         if (dishOrder.getStatusHistory() != null && !dishOrder.getStatusHistory().isEmpty()) {
             return dishOrder.getStatusHistory().get(dishOrder.getStatusHistory().size() - 1).getStatus();

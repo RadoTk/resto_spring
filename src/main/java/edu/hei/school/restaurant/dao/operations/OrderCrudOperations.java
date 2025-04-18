@@ -248,7 +248,8 @@ public class OrderCrudOperations implements CrudOperations<Order> {
         dishOrderCrudOperations.saveAll(dishOrders);
     }
 
-    public Order save(Order order) {
+
+    /*     public Order save(Order order) {
         // Supprimer les plats existants (sans lever d'exception si vide)
         dishOrderCrudOperations.deleteByOrderReference(order.getId());
         
@@ -265,4 +266,83 @@ public class OrderCrudOperations implements CrudOperations<Order> {
         
         return savedOrder;
     }
+        */
+
+        public Order save(Order order) {
+            try (Connection connection = dataSource.getConnection()) {
+                connection.setAutoCommit(false);
+                
+                if (order.getId() == null) {
+                    // CAS CRÉATION - Pas de suppression des plats
+                    return createNewOrder(connection, order);
+                } else {
+                    // CAS MISE À JOUR - Logique existante
+                    return updateExistingOrder(connection, order);
+                }
+            } catch (SQLException e) {
+                throw new ServerException(e);
+            }
+        }
+        
+        private Order createNewOrder(Connection connection, Order order) throws SQLException {
+            // 1. Insertion de la commande
+            String orderSql = """
+                INSERT INTO "order" (reference, creation_datetime, status) 
+                VALUES (?, ?, ?) 
+                RETURNING id
+                """;
+            
+            try (PreparedStatement orderStmt = connection.prepareStatement(orderSql)) {
+                orderStmt.setString(1, order.getReference());
+                orderStmt.setTimestamp(2, Timestamp.valueOf(order.getCreationDateTime()));
+                orderStmt.setString(3, order.getStatus().name());
+                
+                try (ResultSet rs = orderStmt.executeQuery()) {
+                    if (rs.next()) {
+                        order.setId(rs.getLong("id"));
+                        
+                        // 2. Insertion de l'historique de statut
+                        saveStatusHistory(connection, order.getId(), order.getStatusHistory());
+                        
+                        // 3. Insertion des plats (si existants)
+                        if (order.getDishOrders() != null && !order.getDishOrders().isEmpty()) {
+                            saveDishOrders(connection, order.getId(), order.getDishOrders());
+                        }
+                        
+                        connection.commit();
+                        return order;
+                    }
+                    throw new ServerException("Failed to create order");
+                }
+            }
+        }
+        
+        // Ajoutez cette version de saveStatusHistory pour utiliser une connexion existante
+        private void saveStatusHistory(Connection connection, Long orderId, List<OrderStatusHistory> history) throws SQLException {
+            String sql = "INSERT INTO order_status (order_id, status, status_datetime) VALUES (?, ?, ?)";
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                for (OrderStatusHistory entry : history) {
+                    statement.setLong(1, orderId);
+                    statement.setString(2, entry.getStatus().name());
+                    statement.setTimestamp(3, Timestamp.valueOf(entry.getStatusDateTime()));
+                    statement.addBatch();
+                }
+                statement.executeBatch();
+            }
+        }
+    
+public boolean existsByReference(String reference) {
+    try (Connection connection = dataSource.getConnection()) {
+        String sql = "SELECT EXISTS(SELECT 1 FROM \"order\" WHERE reference = ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, reference);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() && rs.getBoolean(1);
+            }
+        }
+    } catch (SQLException e) {
+        throw new ServerException(e);
+    }
+}
+
 }

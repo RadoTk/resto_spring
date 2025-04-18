@@ -21,27 +21,30 @@ public class IngredientRestMapper {
     @Autowired private IngredientCrudOperations ingredientCrudOperations;
 
     public IngredientRest toRest(Ingredient ingredient) {
-    // Conversion des prix
-    List<PriceRest> priceRests = ingredient.getPrices() != null ?
-        ingredient.getPrices().stream()
-            .map(price -> priceRestMapper.apply(price))  // Utilisez votre mapper existant
-            .toList() :
-        Collections.emptyList();
+        // Conversion des prix
+        List<PriceRest> priceRests = ingredient.getPrices() != null ?
+            ingredient.getPrices().stream()
+                .map(price -> priceRestMapper.apply(price))
+                .toList() :
+            Collections.emptyList();
+    
+        // Conversion des mouvements de stock
+        List<StockMovementRest> stockMovementRests = ingredient.getStockMovements() != null ?
+            ingredient.getStockMovements().stream()
+                .map(stock -> stockMovementRestMapper.apply(stock))
+                .toList() :
+            Collections.emptyList();
+    
+        return new IngredientRest(
+            ingredient.getId(),
+            ingredient.getName(),
+            priceRests,
+            stockMovementRests,
+            ingredient.getAvailableQuantity(),  
+            ingredient.getActualPrice()        
+        );
+    }
 
-    // Conversion des mouvements de stock
-    List<StockMovementRest> stockMovementRests = ingredient.getStockMovements() != null ?
-        ingredient.getStockMovements().stream()
-            .map(stock -> stockMovementRestMapper.apply(stock))  // Utilisez votre mapper existant
-            .toList() :
-        Collections.emptyList();
-
-    return new IngredientRest(
-        ingredient.getId(),
-        ingredient.getName(),
-        priceRests,
-        stockMovementRests
-    );
-}
 
     public Ingredient toModel(CreateOrUpdateIngredient newIngredient) {
         Ingredient ingredient = new Ingredient();
