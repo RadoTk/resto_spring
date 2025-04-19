@@ -35,8 +35,9 @@ public class DishService {
     }
 
     public List<Dish> saveAll(List<Dish> dishes) {
-        return dishCrudOperations.saveAll(dishes);
+        return dishCrudOperations.saveAll(dishes);  
     }
+
 
     public Dish updateDishIngredients(Long dishId, List<DishIngredient> dishIngredients) {
         Dish dish = getById(dishId);
@@ -55,6 +56,10 @@ public class DishService {
         dish.setDishIngredients(dishIngredients);
         
         // Sauvegarde des modifications
+        return dishCrudOperations.save(dish);
+    }
+
+    public Dish save(Dish dish) {
         return dishCrudOperations.save(dish);
     }
 }

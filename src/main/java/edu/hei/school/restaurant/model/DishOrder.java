@@ -1,6 +1,7 @@
 package edu.hei.school.restaurant.model;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -21,17 +22,27 @@ public class DishOrder {
     private List<DishOrderStatusHistory> statusHistory;
 
     public void updateStatus(DishOrderStatus newStatus) {
-        if (canTransitionTo(newStatus)) {
-            DishOrderStatusHistory statusHistoryEntry = new DishOrderStatusHistory();
-            statusHistoryEntry.setStatus(newStatus);
-            statusHistoryEntry.setStatusDateTime(LocalDateTime.now());
-            this.statusHistory.add(statusHistoryEntry);
-            this.status = newStatus;
-        } else {
-            throw new IllegalStateException(
-                "Transition interdite de " + this.status + " vers " + newStatus);
-        }
+    // Initialisation si null
+    if (this.status == null) {
+        this.status = DishOrderStatus.CREE;
     }
+    
+    if (!canTransitionTo(newStatus)) {
+        throw new IllegalStateException(
+            "Transition interdite de " + this.status + " vers " + newStatus);
+    }
+    
+    DishOrderStatusHistory historyEntry = new DishOrderStatusHistory();
+    historyEntry.setStatus(newStatus);
+    historyEntry.setStatusDateTime(LocalDateTime.now());
+    
+    if (this.statusHistory == null) {
+        this.statusHistory = new ArrayList<>();
+    }
+    this.statusHistory.add(historyEntry);
+    this.status = newStatus;
+}
+
 
     private boolean canTransitionTo(DishOrderStatus newStatus) {
         if (this.status == null) return newStatus == DishOrderStatus.CREE;

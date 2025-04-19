@@ -53,17 +53,24 @@ public class DishOrderCrudOperations implements CrudOperations<DishOrder> {
         }
     }
 
+
     public List<DishOrder> findByOrderId(Long orderId) {
         List<DishOrder> dishOrders = new ArrayList<>();
         String sql = """
-        SELECT od.id, od.order_id, od.dish_id, od.quantity,
-               d.name AS name, d.price AS price
-        FROM order_dish od
-        JOIN dish d ON od.dish_id = d.id
-        WHERE od.order_id = ?
-        """;
-
-        
+            SELECT od.id, od.order_id, od.dish_id, od.quantity,
+                   d.name AS name, d.price AS price,
+                   (
+                       SELECT ods.status 
+                       FROM order_dish_status ods 
+                       WHERE ods.order_dish_id = od.id 
+                       ORDER BY ods.status_datetime DESC 
+                       LIMIT 1
+                   ) AS current_status
+            FROM order_dish od
+            JOIN dish d ON od.dish_id = d.id
+            WHERE od.order_id = ?
+            """;
+    
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             
@@ -81,6 +88,7 @@ public class DishOrderCrudOperations implements CrudOperations<DishOrder> {
             throw new ServerException(e);
         }
     }
+
 
     @Override
     public DishOrder findById(Long id) {
@@ -357,6 +365,21 @@ String insertSql = """
                 }
                 throw new ServerException("Failed to save dish order");
             }
+        } catch (SQLException e) {
+            throw new ServerException(e);
+        }
+    }
+
+    public void saveStatusHistory(Long dishOrderId, DishOrderStatusHistory history) {
+        String sql = "INSERT INTO order_dish_status (order_dish_id, status, status_datetime) VALUES (?, ?, ?)";
+        
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            
+            statement.setLong(1, dishOrderId);
+            statement.setString(2, history.getStatus().name());
+            statement.setTimestamp(3, Timestamp.valueOf(history.getStatusDateTime()));
+            statement.executeUpdate();
         } catch (SQLException e) {
             throw new ServerException(e);
         }

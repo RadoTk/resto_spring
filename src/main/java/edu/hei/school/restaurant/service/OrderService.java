@@ -80,16 +80,106 @@ public class OrderService {
     public Order updateDishStatus(String reference, Long dishId, DishOrderStatus newStatus) {
         Order order = getByReference(reference);
         
-        DishOrder dishOrder = order.getDishOrders().stream()
+        // Trouver tous les DishOrder correspondant au dishId
+        List<DishOrder> dishOrders = order.getDishOrders().stream()
                 .filter(d -> d.getDish().getId().equals(dishId))
-                .findFirst()
-                .orElseThrow(() -> new NotFoundException("Dish not found in order: " + dishId));
+                .toList();
         
-        dishOrder.updateStatus(newStatus);
+        if (dishOrders.isEmpty()) {
+            throw new NotFoundException("Dish with ID " + dishId + " not found in order");
+        }
         
-        List<Order> savedOrders = orderCrudOperations.saveAll(List.of(order));
-        return savedOrders.getFirst();
+        // Mettre à jour chaque occurrence du plat
+        dishOrders.forEach(dishOrder -> {
+            // Initialiser si null
+            if (dishOrder.getStatus() == null) {
+                dishOrder.setStatus(DishOrderStatus.CREE);
+            }
+            
+            // Mettre à jour le statut
+            dishOrder.updateStatus(newStatus);
+            
+            // Sauvegarder en base (CRITIQUE)
+            DishOrderStatusHistory newStatusHistory = DishOrderStatusHistory.builder()
+                    .status(newStatus)
+                    .statusDateTime(LocalDateTime.now())
+                    .build();
+            dishOrderCrudOperations.saveStatusHistory(dishOrder.getId(), newStatusHistory);
+        });
+        
+        // Mettre à jour le statut de la commande
+        updateOrderStatusBasedOnDishes(order);
+        
+        // Sauvegarder la commande
+        Order updatedOrder = orderCrudOperations.save(order);
+        
+        // Recharger avec toutes les relations
+        return orderCrudOperations.findById(updatedOrder.getId());
     }
+    
+    private void updateOrderStatusBasedOnDishes(Order order) {
+        List<DishOrder> dishOrders = order.getDishOrders();
+        
+        // 1. Si tous les plats sont CONFIRME, la commande passe en CONFIRME
+        boolean allConfirmed = dishOrders.stream()
+                .allMatch(d -> d.getStatus() == DishOrderStatus.CONFIRME);
+        if (allConfirmed && order.getActualStatus() != OrderStatus.CONFIRME) {
+            order.setStatus(OrderStatus.CONFIRME);
+            order.getStatusHistory().add(
+                OrderStatusHistory.builder()
+                    .order(order)
+                    .status(OrderStatus.CONFIRME)
+                    .statusDateTime(LocalDateTime.now())
+                    .build()
+            );
+            return;
+        }
+        
+        // 2. Si au moins un plat est EN_PREPARATION, la commande passe en EN_PREPARATION
+        boolean anyInProgress = dishOrders.stream()
+                .anyMatch(d -> d.getStatus() == DishOrderStatus.EN_PREPARATION);
+        if (anyInProgress && order.getActualStatus() != OrderStatus.EN_PREPARATION) {
+            order.setStatus(OrderStatus.EN_PREPARATION);
+            order.getStatusHistory().add(
+                OrderStatusHistory.builder()
+                    .order(order)
+                    .status(OrderStatus.EN_PREPARATION)
+                    .statusDateTime(LocalDateTime.now())
+                    .build()
+            );
+            return;
+        }
+        
+        // 3. Si tous les plats sont TERMINE, la commande passe en TERMINE
+        boolean allFinished = dishOrders.stream()
+                .allMatch(d -> d.getStatus() == DishOrderStatus.TERMINE);
+        if (allFinished && order.getActualStatus() != OrderStatus.TERMINE) {
+            order.setStatus(OrderStatus.TERMINE);
+            order.getStatusHistory().add(
+                OrderStatusHistory.builder()
+                    .order(order)
+                    .status(OrderStatus.TERMINE)
+                    .statusDateTime(LocalDateTime.now())
+                    .build()
+            );
+            return;
+        }
+        
+        // 4. Si tous les plats sont SERVI, la commande passe en SERVI
+        boolean allDelivered = dishOrders.stream()
+                .allMatch(d -> d.getStatus() == DishOrderStatus.SERVI);
+        if (allDelivered && order.getActualStatus() != OrderStatus.SERVI) {
+            order.setStatus(OrderStatus.SERVI);
+            order.getStatusHistory().add(
+                OrderStatusHistory.builder()
+                    .order(order)
+                    .status(OrderStatus.SERVI)
+                    .statusDateTime(LocalDateTime.now())
+                    .build()
+            );
+        }
+    }
+
 
     private DishOrder toDishOrder(Order order, OrderDishRequest dishRequest) {
         Dish dish = dishCrudOperations.findById(dishRequest.getDishId());
@@ -292,6 +382,7 @@ public class OrderService {
         // Rechargement de l'ordre avec toutes les relations
         return orderCrudOperations.findById(savedOrder.getId());
     }
+    
     
 }
 

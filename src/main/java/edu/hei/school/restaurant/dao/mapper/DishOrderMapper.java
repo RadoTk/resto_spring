@@ -2,6 +2,7 @@ package edu.hei.school.restaurant.dao.mapper;
 
 import edu.hei.school.restaurant.model.Dish;
 import edu.hei.school.restaurant.model.DishOrder;
+import edu.hei.school.restaurant.model.DishOrderStatus;
 import edu.hei.school.restaurant.model.Order;
 import org.springframework.stereotype.Component;
 
@@ -16,16 +17,26 @@ public class DishOrderMapper implements Function<ResultSet, DishOrder> {
         try {
             Dish dish = Dish.builder()
                     .id(resultSet.getLong("dish_id"))
-                    .name(resultSet.getString("name")) // Nom du plat
-                    .price(resultSet.getDouble("price")) // Prix du plat
+                    .name(resultSet.getString("name"))
+                    .price(resultSet.getDouble("price"))
                     .build();
 
-            return DishOrder.builder()
+            DishOrder dishOrder = DishOrder.builder()
                     .id(resultSet.getLong("id"))
                     .order(new Order(resultSet.getLong("order_id")))
                     .dish(dish)
                     .quantity(resultSet.getInt("quantity"))
                     .build();
+
+            // Ajoutez cette partie pour mapper le statut courant
+            String statusStr = resultSet.getString("current_status");
+            if (statusStr != null) {
+                dishOrder.setStatus(DishOrderStatus.valueOf(statusStr));
+            } else {
+                dishOrder.setStatus(DishOrderStatus.CREE); // Valeur par défaut
+            }
+
+            return dishOrder;
         } catch (SQLException e) {
             throw new RuntimeException("Error mapping DishOrder", e);
         }

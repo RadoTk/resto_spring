@@ -8,6 +8,7 @@ import edu.hei.school.restaurant.endpoint.mapper.OrderRestMapper;
 import edu.hei.school.restaurant.endpoint.rest.CreateOrderRequest;
 import edu.hei.school.restaurant.endpoint.rest.DishOrderRequest;
 import edu.hei.school.restaurant.endpoint.rest.OrderRest;
+import edu.hei.school.restaurant.endpoint.rest.UpdateDishOrderStatus;
 import edu.hei.school.restaurant.endpoint.rest.UpdateDishStatusRequest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateOrderDishesRequest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateOrderRequest;
@@ -19,6 +20,8 @@ import edu.hei.school.restaurant.service.exception.ClientException;
 import edu.hei.school.restaurant.service.exception.NotFoundException;
 import edu.hei.school.restaurant.service.exception.ServerException;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -73,7 +76,7 @@ Order updatedOrder = orderService.updateOrderDishes(
 return ResponseEntity.ok(orderRestMapper.toRest(updatedOrder));
 }
 
-
+/*
     @PutMapping("/orders/{reference}/dishes/{dishId}")
     public ResponseEntity<Object> updateDishStatus(
             @PathVariable String reference,
@@ -89,7 +92,7 @@ return ResponseEntity.ok(orderRestMapper.toRest(updatedOrder));
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
-
+ */
     @PostMapping("/orders/{reference}")
     public ResponseEntity<?> createEmptyOrder(@PathVariable String reference) {
         try {
@@ -125,6 +128,27 @@ public ResponseEntity<?> createOrderWithDishes(@RequestBody CreateOrderRequest r
 }
 
 
+
+@PutMapping("/orders/{reference}/dishes/{dishId}")
+public ResponseEntity<?> updateDishStatus(
+        @PathVariable String reference,
+        @PathVariable Long dishId,
+        @RequestBody UpdateDishOrderStatus request) {
+    try {
+        Order updatedOrder = orderService.updateDishStatus(
+            reference, 
+            dishId, 
+            request.getNewStatus()
+        );
+        return ResponseEntity.ok(orderRestMapper.toRest(updatedOrder));
+    } catch (ClientException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (NotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+    } catch (ServerException e) {
+        return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+}
 } 
 
  

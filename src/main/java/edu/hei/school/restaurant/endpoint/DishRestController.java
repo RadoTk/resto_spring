@@ -1,6 +1,7 @@
 package edu.hei.school.restaurant.endpoint;
 
 import edu.hei.school.restaurant.endpoint.mapper.DishRestMapper;
+import edu.hei.school.restaurant.endpoint.rest.CreateOrUpdateDish;
 import edu.hei.school.restaurant.endpoint.rest.DishRest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateDishIngredients;
 import edu.hei.school.restaurant.model.Dish;
@@ -11,6 +12,8 @@ import edu.hei.school.restaurant.service.exception.ClientException;
 import edu.hei.school.restaurant.service.exception.NotFoundException;
 import edu.hei.school.restaurant.service.exception.ServerException;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,6 +44,64 @@ public class DishRestController {
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
+
+    @PostMapping("/dishes")
+public ResponseEntity<Object> createDish(@RequestBody CreateOrUpdateDish dishToCreate) {
+    try {
+        // Conversion du DTO en modèle
+        Dish dishModel = dishRestMapper.toModel(dishToCreate);
+        
+        // Validation du prix
+        if (dishModel.getPrice() == null || dishModel.getPrice() <= 0) {
+            throw new ClientException("Le prix doit être positif");
+        }
+        
+        // Sauvegarde du plat
+        Dish createdDish = dishService.save(dishModel);
+        
+        // Conversion du modèle en DTO pour la réponse
+        DishRest dishRest = dishRestMapper.toRest(createdDish);
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(dishRest);
+    } catch (ClientException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (ServerException e) {
+        return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+}
+
+
+@PostMapping("/dishes/batch")  // Nouveau chemin spécifique
+public ResponseEntity<Object> createDishesBatch(
+    @RequestBody List<CreateOrUpdateDish> dishesToCreate) {
+    try {
+        // 1. Conversion des DTOs en modèles
+        List<Dish> dishModels = dishesToCreate.stream()
+            .map(dishRestMapper::toModel)
+            .collect(Collectors.toList());
+
+        // 2. Validation des prix (exemple)
+        for (Dish dish : dishModels) {
+            if (dish.getPrice() == null || dish.getPrice() <= 0) {
+                throw new ClientException("Prix invalide pour le plat: " + dish.getName());
+            }
+        }
+
+        // 3. Appel au service pour sauvegarde en batch
+        List<Dish> createdDishes = dishService.saveAll(dishModels);
+
+        // 4. Conversion des modèles en DTOs pour la réponse
+        List<DishRest> dishRests = createdDishes.stream()
+            .map(dishRestMapper::toRest)
+            .collect(Collectors.toList());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(dishRests);
+    } catch (ClientException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (ServerException e) {
+        return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+}
 
     @PutMapping("/dishes/{id}/ingredients")
     public ResponseEntity<Object> updateDishIngredients(
