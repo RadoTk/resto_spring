@@ -10,9 +10,11 @@ import edu.hei.school.restaurant.endpoint.rest.UpdateOrderRequest;
 import edu.hei.school.restaurant.model.*;
 import edu.hei.school.restaurant.service.exception.ClientException;
 import edu.hei.school.restaurant.service.exception.NotFoundException;
+import edu.hei.school.restaurant.service.exception.ServerException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,7 +82,6 @@ public class OrderService {
     public Order updateDishStatus(String reference, Long dishId, DishOrderStatus newStatus) {
         Order order = getByReference(reference);
         
-        // Trouver tous les DishOrder correspondant au dishId
         List<DishOrder> dishOrders = order.getDishOrders().stream()
                 .filter(d -> d.getDish().getId().equals(dishId))
                 .toList();
@@ -89,33 +90,35 @@ public class OrderService {
             throw new NotFoundException("Dish with ID " + dishId + " not found in order");
         }
         
-        // Mettre à jour chaque occurrence du plat
         dishOrders.forEach(dishOrder -> {
-            // Initialiser si null
-            if (dishOrder.getStatus() == null) {
+            // Initialiser l'historique si vide
+            if (dishOrder.getStatusHistory() == null) {
+                dishOrder.setStatusHistory(new ArrayList<>());
+            }
+            
+            // Ajouter automatiquement le statut CRÉÉ si c'est le premier changement
+            if (dishOrder.getStatusHistory().isEmpty() && dishOrder.getStatus() == null) {
+                DishOrderStatusHistory createdHistory = DishOrderStatusHistory.builder()
+                    .status(DishOrderStatus.CREE)
+                    .statusDateTime(LocalDateTime.now())
+                    .build();
+                dishOrder.getStatusHistory().add(createdHistory);
                 dishOrder.setStatus(DishOrderStatus.CREE);
             }
             
-            // Mettre à jour le statut
+            // Mettre à jour le statut (cela ajoutera automatiquement à l'historique)
             dishOrder.updateStatus(newStatus);
             
-            // Sauvegarder en base (CRITIQUE)
-            DishOrderStatusHistory newStatusHistory = DishOrderStatusHistory.builder()
-                    .status(newStatus)
-                    .statusDateTime(LocalDateTime.now())
-                    .build();
-            dishOrderCrudOperations.saveStatusHistory(dishOrder.getId(), newStatusHistory);
+            // Sauvegarder l'historique en base
+            DishOrderStatusHistory latestHistory = dishOrder.getStatusHistory().get(
+                dishOrder.getStatusHistory().size() - 1);
+            dishOrderCrudOperations.saveStatusHistory(dishOrder.getId(), latestHistory);
         });
         
-        // Mettre à jour le statut de la commande
         updateOrderStatusBasedOnDishes(order);
-        
-        // Sauvegarder la commande
-        Order updatedOrder = orderCrudOperations.save(order);
-        
-        // Recharger avec toutes les relations
-        return orderCrudOperations.findById(updatedOrder.getId());
+        return orderCrudOperations.save(order);
     }
+    
     
     private void updateOrderStatusBasedOnDishes(Order order) {
         List<DishOrder> dishOrders = order.getDishOrders();
@@ -383,6 +386,11 @@ public class OrderService {
         return orderCrudOperations.findById(savedOrder.getId());
     }
     
+
+
+    public List<Order> getOrdersByStatus(OrderStatus status) throws ServerException {
+        return orderCrudOperations.findByStatus(status);
+    }
     
 }
 

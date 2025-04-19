@@ -3,6 +3,7 @@ package edu.hei.school.restaurant.dao.operations;
 import edu.hei.school.restaurant.dao.DataSource;
 import edu.hei.school.restaurant.model.DishOrder;
 import edu.hei.school.restaurant.model.Order;
+import edu.hei.school.restaurant.model.OrderStatus;
 import edu.hei.school.restaurant.model.OrderStatusHistory;
 import edu.hei.school.restaurant.dao.mapper.OrderMapper;
 import edu.hei.school.restaurant.dao.mapper.OrderStatusHistoryMapper;
@@ -355,4 +356,40 @@ public class OrderCrudOperations implements CrudOperations<Order> {
             throw new ServerException(e);
         }
     }
+
+
+    public List<Order> findByStatus(OrderStatus status) {
+    List<Order> orders = new ArrayList<>();
+    String sql = """
+        SELECT o.id, o.reference, o.creation_datetime 
+        FROM "order" o 
+        JOIN (
+            SELECT order_id, MAX(status_datetime) as latest_status
+            FROM "order_status"
+            GROUP BY order_id
+        ) latest ON o.id = latest.order_id
+        JOIN "order_status" os ON os.order_id = latest.order_id 
+                            AND os.status_datetime = latest.latest_status
+        WHERE os.status = ?
+        ORDER BY o.creation_datetime DESC
+        """;
+    
+    try (Connection connection = dataSource.getConnection();
+         PreparedStatement statement = connection.prepareStatement(sql)) {
+        
+        statement.setString(1, status.name());
+        
+        try (ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                Order order = orderMapper.apply(resultSet);
+                order.setStatusHistory(getStatusHistory(order.getId()));
+                order.setDishOrders(dishOrderCrudOperations.findByOrderId(order.getId()));
+                orders.add(order);
+            }
+        }
+    } catch (SQLException e) {
+        throw new ServerException(e);
+    }
+    return orders;
+}
 }

@@ -7,6 +7,7 @@ import edu.hei.school.restaurant.endpoint.mapper.OrderRequestMapper;
 import edu.hei.school.restaurant.endpoint.mapper.OrderRestMapper;
 import edu.hei.school.restaurant.endpoint.rest.CreateOrderRequest;
 import edu.hei.school.restaurant.endpoint.rest.DishOrderRequest;
+import edu.hei.school.restaurant.endpoint.rest.DishSold;
 import edu.hei.school.restaurant.endpoint.rest.OrderRest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateDishOrderStatus;
 import edu.hei.school.restaurant.endpoint.rest.UpdateDishStatusRequest;
@@ -30,7 +31,9 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -76,23 +79,7 @@ Order updatedOrder = orderService.updateOrderDishes(
 return ResponseEntity.ok(orderRestMapper.toRest(updatedOrder));
 }
 
-/*
-    @PutMapping("/orders/{reference}/dishes/{dishId}")
-    public ResponseEntity<Object> updateDishStatus(
-            @PathVariable String reference,
-            @PathVariable Long dishId,
-            @RequestBody UpdateDishStatusRequest request) {
-        try {
-            OrderRest orderRest = orderRestMapper.toRest(
-                    orderService.updateDishStatus(reference, dishId, request.getStatus()));
-            return ResponseEntity.ok().body(orderRest);
-        } catch (NotFoundException e) {
-            return ResponseEntity.status(NOT_FOUND).body(e.getMessage());
-        } catch (ServerException e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
-        }
-    }
- */
+
     @PostMapping("/orders/{reference}")
     public ResponseEntity<?> createEmptyOrder(@PathVariable String reference) {
         try {
@@ -148,6 +135,42 @@ public ResponseEntity<?> updateDishStatus(
     } catch (ServerException e) {
         return ResponseEntity.internalServerError().body(e.getMessage());
     }
+}
+
+
+@GetMapping("/sales")
+public ResponseEntity<List<DishSold>> getDishesSold() {
+    try {
+        List<Order> deliveredOrders = orderService.getOrdersByStatus(OrderStatus.SERVI);
+        List<DishSold> dishesSold = calculateDishesSold(deliveredOrders);
+        
+        return ResponseEntity.ok(dishesSold);
+    } catch (ServerException e) {
+        return ResponseEntity.internalServerError().build();
+    }
+}
+
+private List<DishSold> calculateDishesSold(List<Order> deliveredOrders) {
+    Map<Long, DishSold> dishSoldMap = new HashMap<>();
+    
+    for (Order order : deliveredOrders) {
+        for (DishOrder dishOrder : order.getDishOrders()) {
+            dishSoldMap.compute(dishOrder.getDish().getId(), (id, dishSold) -> {
+                if (dishSold == null) {
+                    return new DishSold(
+                        id,
+                        dishOrder.getDish().getName(),
+                        dishOrder.getQuantity()
+                    );
+                } else {
+                    dishSold.setQuantitySold(dishSold.getQuantitySold() + dishOrder.getQuantity());
+                    return dishSold;
+                }
+            });
+        }
+    }
+    
+    return new ArrayList<>(dishSoldMap.values());
 }
 } 
 

@@ -371,14 +371,15 @@ String insertSql = """
     }
 
     public void saveStatusHistory(Long dishOrderId, DishOrderStatusHistory history) {
-        String sql = "INSERT INTO order_dish_status (order_dish_id, status, status_datetime) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO dish_order_status_history " +
+                     "(dish_order_id, status, status_date_time) " +
+                     "VALUES (?, ?, ?)";
         
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            
             statement.setLong(1, dishOrderId);
             statement.setString(2, history.getStatus().name());
-            statement.setTimestamp(3, Timestamp.valueOf(history.getStatusDateTime()));
+            statement.setObject(3, history.getStatusDateTime());
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new ServerException(e);
