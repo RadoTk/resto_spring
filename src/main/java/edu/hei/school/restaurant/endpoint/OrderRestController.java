@@ -5,6 +5,8 @@ package edu.hei.school.restaurant.endpoint;
 import edu.hei.school.restaurant.dao.mapper.DishOrderMapper;
 import edu.hei.school.restaurant.endpoint.mapper.OrderRequestMapper;
 import edu.hei.school.restaurant.endpoint.mapper.OrderRestMapper;
+import edu.hei.school.restaurant.endpoint.rest.CreateOrderRequest;
+import edu.hei.school.restaurant.endpoint.rest.DishOrderRequest;
 import edu.hei.school.restaurant.endpoint.rest.OrderRest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateDishStatusRequest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateOrderDishesRequest;
@@ -99,6 +101,30 @@ return ResponseEntity.ok(orderRestMapper.toRest(updatedOrder));
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
+
+ @PostMapping("/orders")
+public ResponseEntity<?> createOrderWithDishes(@RequestBody CreateOrderRequest request) {
+    try {
+        // Conversion DishQuantity -> DishOrderRequest
+        List<DishOrderRequest> dishOrderRequests = request.getDishes().stream()
+            .map(dq -> {
+                DishOrderRequest dor = new DishOrderRequest();
+                dor.setDishId(dq.getDishId());
+                dor.setQuantity(dq.getQuantity());
+                return dor;
+            })
+            .toList();
+
+        Order order = orderService.createOrderWithDishes(request.getReference(), dishOrderRequests);
+        return ResponseEntity.ok(orderRestMapper.toRest(order));
+    } catch (ClientException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (ServerException e) {
+        return ResponseEntity.internalServerError().body(e.getMessage());
+    }
+}
+
+
 } 
 
  

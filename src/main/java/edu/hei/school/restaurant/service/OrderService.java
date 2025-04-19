@@ -3,6 +3,7 @@ package edu.hei.school.restaurant.service;
 import edu.hei.school.restaurant.dao.operations.DishCrudOperations;
 import edu.hei.school.restaurant.dao.operations.DishOrderCrudOperations;
 import edu.hei.school.restaurant.dao.operations.OrderCrudOperations;
+import edu.hei.school.restaurant.endpoint.rest.DishOrderRequest;
 import edu.hei.school.restaurant.endpoint.rest.OrderDishRequest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateOrderDishesRequest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateOrderRequest;
@@ -238,5 +239,59 @@ public class OrderService {
         order.setStatusHistory(List.of(initialStatus));
         return orderCrudOperations.save(order);
     }
+
+
+
+    public Order createOrderWithDishes(String reference, List<DishOrderRequest> dishOrderRequests) {
+        if (existsByReference(reference)) {
+            throw new ClientException("Order reference already exists");
+        }
+    
+        // Création de la commande vide
+        Order newOrder = Order.builder()
+                .reference(reference)
+                .creationDateTime(LocalDateTime.now())
+                .status(OrderStatus.CREE)
+                .dishOrders(new ArrayList<>())
+                .build();
+    
+        // Création des DishOrders
+        List<DishOrder> dishOrders = new ArrayList<>();
+        for (DishOrderRequest request : dishOrderRequests) {
+            Dish dish = dishCrudOperations.findById(request.getDishId());
+            if (dish == null) {
+                throw new ClientException("Dish with ID " + request.getDishId() + " not found");
+            }
+    
+            DishOrder dishOrder = DishOrder.builder()
+                    .dish(dish)
+                    .order(newOrder)
+                    .quantity(request.getQuantity())
+                    .status(DishOrderStatus.CREE)
+                    .statusHistory(List.of(DishOrderStatusHistory.builder()
+                            .status(DishOrderStatus.CREE)
+                            .statusDateTime(LocalDateTime.now())
+                            .build()))
+                    .build();
+            dishOrders.add(dishOrder);
+        }
+    
+        newOrder.setDishOrders(dishOrders);
+    
+        // Ajout de l'historique de statut
+        OrderStatusHistory statusHistory = OrderStatusHistory.builder()
+                .order(newOrder)
+                .status(OrderStatus.CREE)
+                .statusDateTime(LocalDateTime.now())
+                .build();
+        newOrder.setStatusHistory(List.of(statusHistory));
+    
+        // Sauvegarde
+        Order savedOrder = orderCrudOperations.save(newOrder);
+        
+        // Rechargement de l'ordre avec toutes les relations
+        return orderCrudOperations.findById(savedOrder.getId());
+    }
+    
 }
 
