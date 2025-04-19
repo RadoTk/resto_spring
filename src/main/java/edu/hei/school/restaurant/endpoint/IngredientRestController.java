@@ -8,8 +8,6 @@ import edu.hei.school.restaurant.endpoint.rest.IngredientRest;
 import edu.hei.school.restaurant.model.Ingredient;
 import edu.hei.school.restaurant.model.Price;
 import edu.hei.school.restaurant.model.StockMovement;
-import edu.hei.school.restaurant.model.StockMovementType;
-import edu.hei.school.restaurant.model.Unit;
 import edu.hei.school.restaurant.service.IngredientService;
 import edu.hei.school.restaurant.service.exception.ClientException;
 import edu.hei.school.restaurant.service.exception.NotFoundException;
@@ -18,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -157,7 +154,7 @@ public ResponseEntity<Object> updateIngredientStockMovements(
                 movement.setQuantity(stockMovement.getQuantity());
                 movement.setUnit(stockMovement.getUnit());
                 movement.setMovementType(stockMovement.getMovementType());
-                movement.setCreationDatetime(Instant.now()); // ou utiliser stockMovement.getCreationDateTime() si nécessaire
+                movement.setCreationDatetime(stockMovement.getCreationDateTime()); // ou utiliser stockMovement.getCreationDateTime() si nécessaire
                 movement.setIngredient(ingredient); // Associer l'ingrédient
                 return movement;
             })

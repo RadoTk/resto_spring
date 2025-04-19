@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 public class UpdateDishStatusRequest {
-    private DishOrderStatus status;
+    private DishOrderStatus newStatus;
 } 

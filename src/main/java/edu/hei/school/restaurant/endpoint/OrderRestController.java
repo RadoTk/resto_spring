@@ -14,12 +14,14 @@ import edu.hei.school.restaurant.endpoint.rest.UpdateDishStatusRequest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateOrderDishesRequest;
 import edu.hei.school.restaurant.endpoint.rest.UpdateOrderRequest;
 import edu.hei.school.restaurant.model.DishOrder;
+import edu.hei.school.restaurant.model.DishOrderStatus;
 import edu.hei.school.restaurant.model.Order;
 import edu.hei.school.restaurant.model.OrderStatus;
 import edu.hei.school.restaurant.service.OrderService;
 import edu.hei.school.restaurant.service.exception.ClientException;
 import edu.hei.school.restaurant.service.exception.NotFoundException;
 import edu.hei.school.restaurant.service.exception.ServerException;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
@@ -115,27 +117,25 @@ public ResponseEntity<?> createOrderWithDishes(@RequestBody CreateOrderRequest r
 }
 
 
-
 @PutMapping("/orders/{reference}/dishes/{dishId}")
-public ResponseEntity<?> updateDishStatus(
+public ResponseEntity<Object> updateDishStatus(
         @PathVariable String reference,
         @PathVariable Long dishId,
-        @RequestBody UpdateDishOrderStatus request) {
+        @RequestBody UpdateDishStatusRequest request) {
     try {
-        Order updatedOrder = orderService.updateDishStatus(
-            reference, 
-            dishId, 
-            request.getNewStatus()
-        );
-        return ResponseEntity.ok(orderRestMapper.toRest(updatedOrder));
-    } catch (ClientException e) {
-        return ResponseEntity.badRequest().body(e.getMessage());
+        orderService.updateDishStatus(reference, dishId, request.getNewStatus());
+        
+        OrderRest orderRest = orderRestMapper.toRest(
+                orderService.getByReference(reference));
+        
+        return ResponseEntity.ok().body(orderRest);
     } catch (NotFoundException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        return ResponseEntity.status(NOT_FOUND).body(e.getMessage());
     } catch (ServerException e) {
         return ResponseEntity.internalServerError().body(e.getMessage());
     }
 }
+
 
 
 @GetMapping("/sales")

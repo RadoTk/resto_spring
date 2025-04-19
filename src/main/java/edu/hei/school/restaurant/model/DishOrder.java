@@ -22,26 +22,29 @@ public class DishOrder {
     private List<DishOrderStatusHistory> statusHistory;
 
     public void updateStatus(DishOrderStatus newStatus) {
-    // Initialisation si null
-    if (this.status == null) {
-        this.status = DishOrderStatus.CREE;
+        // Initialisation si null
+        if (this.status == null) {
+            this.status = DishOrderStatus.CREE;
+        }
+        
+        if (!canTransitionTo(newStatus)) {
+            throw new IllegalStateException(
+                "Transition interdite de " + this.status + " vers " + newStatus);
+        }
+        
+        // Création de l'entrée d'historique
+        DishOrderStatusHistory historyEntry = DishOrderStatusHistory.builder()
+            .dishOrder(this) // Définir la référence au DishOrder courant
+            .status(newStatus)
+            .statusDateTime(LocalDateTime.now())
+            .build();
+        
+        if (this.statusHistory == null) {
+            this.statusHistory = new ArrayList<>();
+        }
+        this.statusHistory.add(historyEntry);
+        this.status = newStatus;
     }
-    
-    if (!canTransitionTo(newStatus)) {
-        throw new IllegalStateException(
-            "Transition interdite de " + this.status + " vers " + newStatus);
-    }
-    
-    DishOrderStatusHistory historyEntry = new DishOrderStatusHistory();
-    historyEntry.setStatus(newStatus);
-    historyEntry.setStatusDateTime(LocalDateTime.now());
-    
-    if (this.statusHistory == null) {
-        this.statusHistory = new ArrayList<>();
-    }
-    this.statusHistory.add(historyEntry);
-    this.status = newStatus;
-}
 
 
     private boolean canTransitionTo(DishOrderStatus newStatus) {
@@ -60,7 +63,4 @@ public class DishOrder {
         return statusHistory.isEmpty() ? null : 
                statusHistory.get(statusHistory.size() - 1).getStatus();
     }
-
-
-    
 }

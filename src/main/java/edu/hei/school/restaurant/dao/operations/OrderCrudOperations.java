@@ -2,6 +2,7 @@ package edu.hei.school.restaurant.dao.operations;
 
 import edu.hei.school.restaurant.dao.DataSource;
 import edu.hei.school.restaurant.model.DishOrder;
+import edu.hei.school.restaurant.model.DishOrderStatusHistory;
 import edu.hei.school.restaurant.model.Order;
 import edu.hei.school.restaurant.model.OrderStatus;
 import edu.hei.school.restaurant.model.OrderStatusHistory;
@@ -226,12 +227,13 @@ public class OrderCrudOperations implements CrudOperations<Order> {
     }
 
     private void saveDishOrders(Connection connection, Long orderId, List<DishOrder> dishOrders) throws SQLException {
-    // 1. Insérer dans order_dish
     String dishOrderSql = "INSERT INTO order_dish (order_id, dish_id, quantity) VALUES (?, ?, ?) RETURNING id";
     String statusSql = "INSERT INTO order_dish_status (order_dish_id, status, status_datetime) VALUES (?, ?, ?)";
+    String historySql = "INSERT INTO dish_order_status_history (dish_order_id, status, status_date_time) VALUES (?, ?, ?)";
     
     try (PreparedStatement dishOrderStmt = connection.prepareStatement(dishOrderSql, Statement.RETURN_GENERATED_KEYS);
-         PreparedStatement statusStmt = connection.prepareStatement(statusSql)) {
+         PreparedStatement statusStmt = connection.prepareStatement(statusSql);
+         PreparedStatement historyStmt = connection.prepareStatement(historySql)) {
         
         for (DishOrder dishOrder : dishOrders) {
             // Insérer dans order_dish
@@ -250,26 +252,56 @@ public class OrderCrudOperations implements CrudOperations<Order> {
                     statusStmt.setString(2, dishOrder.getStatus().name());
                     statusStmt.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
                     statusStmt.addBatch();
+                    
+                    // Insérer tous les historiques de statut dans dish_order_status_history
+                    if (dishOrder.getStatusHistory() != null) {
+                        for (DishOrderStatusHistory history : dishOrder.getStatusHistory()) {
+                            historyStmt.setLong(1, dishOrderId);
+                            historyStmt.setString(2, history.getStatus().name());
+                            historyStmt.setTimestamp(3, Timestamp.valueOf(history.getStatusDateTime()));
+                            historyStmt.addBatch();
+                        }
+                    }
                 }
             }
         }
         statusStmt.executeBatch();
+        historyStmt.executeBatch();
     }
 }
 
-    private void updateDishOrders(Connection connection, Long orderId, List<DishOrder> dishOrders) throws SQLException {
-        // Supprimer les anciens plats
-        String deleteSql = "DELETE FROM order_dish WHERE order_id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(deleteSql)) {
-            stmt.setLong(1, orderId);
-            stmt.executeUpdate();
-        }
-        
-        // Ajouter les nouveaux plats
-        if (dishOrders != null && !dishOrders.isEmpty()) {
-            saveDishOrders(connection, orderId, dishOrders);
-        }
+private void updateDishOrders(Connection connection, Long orderId, List<DishOrder> dishOrders) throws SQLException {
+    // 1. Supprimer les anciens historiques de statut des plats
+    String deleteHistorySql = """
+        DELETE FROM dish_order_status_history 
+        WHERE dish_order_id IN (
+            SELECT id FROM order_dish WHERE order_id = ?
+        )
+        """;
+    try (PreparedStatement stmt = connection.prepareStatement(deleteHistorySql)) {
+        stmt.setLong(1, orderId);
+        stmt.executeUpdate();
     }
+    
+    // 2. Supprimer les anciens statuts des plats
+    String deleteStatusSql = "DELETE FROM order_dish_status WHERE order_dish_id IN (SELECT id FROM order_dish WHERE order_id = ?)";
+    try (PreparedStatement stmt = connection.prepareStatement(deleteStatusSql)) {
+        stmt.setLong(1, orderId);
+        stmt.executeUpdate();
+    }
+    
+    // 3. Supprimer les anciens plats
+    String deleteDishSql = "DELETE FROM order_dish WHERE order_id = ?";
+    try (PreparedStatement stmt = connection.prepareStatement(deleteDishSql)) {
+        stmt.setLong(1, orderId);
+        stmt.executeUpdate();
+    }
+    
+    // 4. Ajouter les nouveaux plats avec leurs statuts et historiques
+    if (dishOrders != null && !dishOrders.isEmpty()) {
+        saveDishOrders(connection, orderId, dishOrders);
+    }
+}
 
     public Order save(Order order) {
         try (Connection connection = dataSource.getConnection()) {

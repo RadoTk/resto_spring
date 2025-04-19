@@ -79,46 +79,24 @@ public class OrderService {
         return savedOrders.getFirst();
     }
 
+
     public Order updateDishStatus(String reference, Long dishId, DishOrderStatus newStatus) {
         Order order = getByReference(reference);
         
-        List<DishOrder> dishOrders = order.getDishOrders().stream()
+        DishOrder dishOrder = order.getDishOrders().stream()
                 .filter(d -> d.getDish().getId().equals(dishId))
-                .toList();
-        
-        if (dishOrders.isEmpty()) {
-            throw new NotFoundException("Dish with ID " + dishId + " not found in order");
-        }
-        
-        dishOrders.forEach(dishOrder -> {
-            // Initialiser l'historique si vide
-            if (dishOrder.getStatusHistory() == null) {
-                dishOrder.setStatusHistory(new ArrayList<>());
-            }
-            
-            // Ajouter automatiquement le statut CRÉÉ si c'est le premier changement
-            if (dishOrder.getStatusHistory().isEmpty() && dishOrder.getStatus() == null) {
-                DishOrderStatusHistory createdHistory = DishOrderStatusHistory.builder()
-                    .status(DishOrderStatus.CREE)
-                    .statusDateTime(LocalDateTime.now())
-                    .build();
-                dishOrder.getStatusHistory().add(createdHistory);
-                dishOrder.setStatus(DishOrderStatus.CREE);
-            }
-            
-            // Mettre à jour le statut (cela ajoutera automatiquement à l'historique)
-            dishOrder.updateStatus(newStatus);
-            
-            // Sauvegarder l'historique en base
-            DishOrderStatusHistory latestHistory = dishOrder.getStatusHistory().get(
-                dishOrder.getStatusHistory().size() - 1);
-            dishOrderCrudOperations.saveStatusHistory(dishOrder.getId(), latestHistory);
-        });
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Dish not found in order: " + dishId));
+    
+        // Mettre à jour le statut et l'historique
+        dishOrderCrudOperations.updateStatus(dishOrder.getId(), newStatus);
+        dishOrder.updateStatus(newStatus);
         
         updateOrderStatusBasedOnDishes(order);
-        return orderCrudOperations.save(order);
-    }
     
+        List<Order> savedOrders = orderCrudOperations.saveAll(List.of(order));
+        return savedOrders.getFirst();
+    }
     
     private void updateOrderStatusBasedOnDishes(Order order) {
         List<DishOrder> dishOrders = order.getDishOrders();

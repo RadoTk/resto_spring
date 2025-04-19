@@ -7,11 +7,7 @@ import edu.hei.school.restaurant.model.Ingredient;
 import edu.hei.school.restaurant.model.Price;
 import edu.hei.school.restaurant.model.StockMovement;
 import edu.hei.school.restaurant.service.exception.ClientException;
-import edu.hei.school.restaurant.service.exception.NotFoundException;
-import edu.hei.school.restaurant.service.exception.ServerException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

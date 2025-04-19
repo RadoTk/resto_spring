@@ -71,7 +71,7 @@ public ResponseEntity<Object> createDish(@RequestBody CreateOrUpdateDish dishToC
 }
 
 
-@PostMapping("/dishes/batch")  // Nouveau chemin spécifique
+@PostMapping("/dishes/batch") 
 public ResponseEntity<Object> createDishesBatch(
     @RequestBody List<CreateOrUpdateDish> dishesToCreate) {
     try {
@@ -135,97 +135,5 @@ public ResponseEntity<Object> createDishesBatch(
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
-
-    /*
-    @PostMapping
-    public ResponseEntity<Object> createDishes(@RequestBody List<DishRest> dishesToCreate) {
-        try {
-            // Validation basique
-            dishesToCreate.forEach(dish -> {
-                if (dish.getName() == null || dish.getName().isBlank()) {
-                    throw new ClientException("Dish name cannot be empty");
-                }
-                if (dish.getActualPrice() == null || dish.getActualPrice() <= 0) {
-                    throw new ClientException("Dish price must be positive");
-                }
-            });
-
-            List<Dish> dishes = dishesToCreate.stream()
-                    .map(dishRestMapper::toModel) // Remplacez toDomain par toModel
-                    .toList();
-
-            List<DishRest> createdDishes = dishService.saveAll(dishes).stream()
-                    .map(dishRestMapper::toRest)
-                    .toList();
-
-            return ResponseEntity.ok(createdDishes);
-        } catch (ClientException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (ServerException e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
-        }
-    }
-
-    @PutMapping
-    public ResponseEntity<Object> updateDishes(@RequestBody List<DishRest> dishesToUpdate) {
-        try {
-            List<Dish> dishes = dishesToUpdate.stream()
-                    .map(dishRestMapper::toModel) // Remplacez toDomain par toModel
-                    .toList();
-
-            List<DishRest> updatedDishes = dishService.saveAll(dishes).stream()
-                    .map(dishRestMapper::toRest)
-                    .toList();
-
-            return ResponseEntity.ok(updatedDishes);
-        } catch (ClientException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (ServerException e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
-        }
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Object> getDishById(@PathVariable Long id) {
-        try {
-            Dish dish = dishService.getById(id);
-            return ResponseEntity.ok(dishRestMapper.toRest(dish)); // Correction ici
-        } catch (NotFoundException e) {
-            return ResponseEntity.status(NOT_FOUND).body(e.getMessage());
-        } catch (ServerException e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
-        }
-    }
-
-    @PutMapping("/{dishId}")
-    public ResponseEntity<Object> updateDish(
-            @PathVariable Long dishId,
-            @RequestBody DishRest dishToUpdate) {
-        try {
-            // Validation
-            if (dishToUpdate.getName() == null || dishToUpdate.getName().isBlank()) {
-                throw new ClientException("Dish name cannot be empty");
-            }
-            if (dishToUpdate.getActualPrice() <= 0) {
-                throw new ClientException("Dish price must be positive");
-            }
-
-            // Conversion et assignation de l'ID
-            Dish dish = dishRestMapper.toModel(dishToUpdate); // Remplacez toDomain par toModel
-            dish.setId(dishId);
-
-            // Mise à jour
-            Dish updatedDish = dishService.update(dish);
-            return ResponseEntity.ok(dishRestMapper.toRest(updatedDish));
-            
-        } catch (NotFoundException e) {
-            return ResponseEntity.status(NOT_FOUND).body(e.getMessage());
-        } catch (ClientException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (ServerException e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
-        }
-    }
-         */
 }
 

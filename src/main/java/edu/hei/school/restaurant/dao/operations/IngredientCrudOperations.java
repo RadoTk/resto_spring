@@ -25,8 +25,6 @@ import java.util.List;
 public class IngredientCrudOperations implements CrudOperations<Ingredient> {
     private final DataSource dataSource;
     private final IngredientMapper ingredientMapper;
-    private final PriceCrudOperations priceCrudOperations;
-    private final StockMovementCrudOperations stockMovementCrudOperations;
 
     // TODO : default values for page and size
     @Override
@@ -148,7 +146,7 @@ public class IngredientCrudOperations implements CrudOperations<Ingredient> {
 
 
     @Autowired
-    private DishIngredientMapper dishIngredientMapper; // Assurez-vous que cette ligne est présente
+    private DishIngredientMapper dishIngredientMapper;
     
     public List<DishIngredient> findByDishId(Long dishId) {
         List<DishIngredient> dishIngredients = new ArrayList<>();
@@ -160,7 +158,7 @@ public class IngredientCrudOperations implements CrudOperations<Ingredient> {
             statement.setLong(1, dishId);
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
-                    Ingredient ingredient = ingredientMapper.apply(resultSet); // Le mapper s'attend à "id" et "name"
+                    Ingredient ingredient = ingredientMapper.apply(resultSet);
                     DishIngredient dishIngredient = dishIngredientMapper.apply(resultSet, ingredient);
                     dishIngredients.add(dishIngredient);
                 }
